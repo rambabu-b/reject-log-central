@@ -72,7 +72,7 @@ const SearchLogs = () => {
       );
     }
 
-    if (filters.status) {
+    if (filters.status && filters.status !== 'all') {
       filtered = filtered.filter(entry => entry.status === filters.status);
     }
 
@@ -208,7 +208,7 @@ const SearchLogs = () => {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="production_pending">Production Pending</SelectItem>
                   <SelectItem value="stores_pending">Stores Pending</SelectItem>
