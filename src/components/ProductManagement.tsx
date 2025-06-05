@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,54 @@ const ProductManagement = () => {
     const stored = localStorage.getItem('products');
     if (stored) {
       setProducts(JSON.parse(stored));
+    } else {
+      // Add initial sample products based on the pharmaceutical process flow
+      const sampleProducts: Product[] = [
+        {
+          id: '1',
+          name: 'Paracetamol Tablets 500mg',
+          batchNo: 'PCT001',
+          lineNo: 'Line-A1',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: '2',
+          name: 'Amoxicillin Capsules 250mg',
+          batchNo: 'AMX002',
+          lineNo: 'Line-B2',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: '3',
+          name: 'Ibuprofen Tablets 400mg',
+          batchNo: 'IBU003',
+          lineNo: 'Line-A1',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: '4',
+          name: 'Metformin Tablets 850mg',
+          batchNo: 'MET004',
+          lineNo: 'Line-C3',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: '5',
+          name: 'Omeprazole Capsules 20mg',
+          batchNo: 'OME005',
+          lineNo: 'Line-B2',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: '6',
+          name: 'Aspirin Tablets 75mg',
+          batchNo: 'ASP006',
+          lineNo: 'Line-A1',
+          createdAt: new Date().toISOString(),
+        }
+      ];
+      setProducts(sampleProducts);
+      localStorage.setItem('products', JSON.stringify(sampleProducts));
     }
   }, []);
 
