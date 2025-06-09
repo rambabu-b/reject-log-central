@@ -92,7 +92,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
       if (!formData.grossWeightObserved || !formData.destructionDoneBy || !formData.destructionVerifiedBy) {
         toast({
           title: "Error",
-          description: "All stores fields are required",
+          description: "Gross weight observed, destruction done by, and destruction verified by are required",
           variant: "destructive",
         });
         return;
@@ -265,13 +265,14 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="grossWeightObserved">Gross Weight Observed (kg)</Label>
-                {editMode && (user?.role === 'stores' || user?.role === 'hod') ? (
+                {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
                   <Input
                     id="grossWeightObserved"
                     type="number"
                     step="0.01"
                     value={formData.grossWeightObserved}
                     onChange={(e) => setFormData({ ...formData, grossWeightObserved: e.target.value })}
+                    required
                   />
                 ) : (
                   <div className="text-sm font-medium">{entry.grossWeightObserved || 'Not entered'}</div>
@@ -279,23 +280,27 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
               </div>
               <div>
                 <Label htmlFor="destructionDoneBy">Destruction Done By</Label>
-                {editMode && (user?.role === 'stores' || user?.role === 'hod') ? (
+                {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
                   <Input
                     id="destructionDoneBy"
                     value={formData.destructionDoneBy}
                     onChange={(e) => setFormData({ ...formData, destructionDoneBy: e.target.value })}
+                    placeholder="Enter name of person who performed destruction"
+                    required
                   />
                 ) : (
                   <div className="text-sm font-medium">{entry.destructionDoneBy || 'Not entered'}</div>
                 )}
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <Label htmlFor="destructionVerifiedBy">Destruction Verified By</Label>
-                {editMode && (user?.role === 'stores' || user?.role === 'hod') ? (
+                {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
                   <Input
                     id="destructionVerifiedBy"
                     value={formData.destructionVerifiedBy}
                     onChange={(e) => setFormData({ ...formData, destructionVerifiedBy: e.target.value })}
+                    placeholder="Enter name of person who verified destruction"
+                    required
                   />
                 ) : (
                   <div className="text-sm font-medium">{entry.destructionVerifiedBy || 'Not entered'}</div>
@@ -303,13 +308,14 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
               </div>
             </div>
             
-            {editMode && (user?.role === 'stores' || user?.role === 'hod') ? (
+            {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
               <div className="mt-4">
                 <Label htmlFor="storesRemarks">Stores Remarks</Label>
                 <Textarea
                   id="storesRemarks"
                   value={formData.storesRemarks}
                   onChange={(e) => setFormData({ ...formData, storesRemarks: e.target.value })}
+                  placeholder="Enter any additional remarks"
                 />
               </div>
             ) : (
@@ -336,7 +342,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
           <div className="border-t pt-4">
             <h3 className="text-lg font-semibold mb-4">QA Sign-off</h3>
             
-            {editMode && (user?.role === 'qa' || user?.role === 'hod') ? (
+            {editMode && (user?.role === 'qa' || user?.role === 'hod') && entry.status === 'qa_pending' ? (
               <div>
                 <Label htmlFor="qaRemarks">QA Remarks</Label>
                 <Textarea
