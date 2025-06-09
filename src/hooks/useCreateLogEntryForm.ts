@@ -15,6 +15,52 @@ interface FormData {
   productionRemarks: string;
 }
 
+// Sample products for pharmaceutical process flow
+const getSampleProducts = (): Product[] => [
+  {
+    id: '1',
+    name: 'Paracetamol Tablets 500mg',
+    batchNo: 'PCT001',
+    lineNo: 'Line-A1',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    name: 'Amoxicillin Capsules 250mg',
+    batchNo: 'AMX002',
+    lineNo: 'Line-B2',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '3',
+    name: 'Ibuprofen Tablets 400mg',
+    batchNo: 'IBU003',
+    lineNo: 'Line-A1',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '4',
+    name: 'Metformin Tablets 850mg',
+    batchNo: 'MET004',
+    lineNo: 'Line-C3',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '5',
+    name: 'Omeprazole Capsules 20mg',
+    batchNo: 'OME005',
+    lineNo: 'Line-B2',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '6',
+    name: 'Aspirin Tablets 75mg',
+    batchNo: 'ASP006',
+    lineNo: 'Line-A1',
+    createdAt: new Date().toISOString(),
+  }
+];
+
 export const useCreateLogEntryForm = (onCreate: (entry: LogEntry) => void) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [formData, setFormData] = useState<FormData>({
@@ -39,8 +85,11 @@ export const useCreateLogEntryForm = (onCreate: (entry: LogEntry) => void) => {
       console.log('Products loaded from localStorage:', loadedProducts);
       setProducts(loadedProducts);
     } else {
-      console.log('No products found in localStorage');
-      setProducts([]);
+      console.log('No products found in localStorage, initializing sample products');
+      const sampleProducts = getSampleProducts();
+      setProducts(sampleProducts);
+      localStorage.setItem('products', JSON.stringify(sampleProducts));
+      console.log('Sample products initialized:', sampleProducts);
     }
   }, [user]);
 
