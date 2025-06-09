@@ -33,17 +33,28 @@ const CreateLogEntry = ({ onCancel, onCreate }: CreateLogEntryProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('Loading products for user:', user?.role, user?.name);
     const stored = localStorage.getItem('products');
     if (stored) {
-      setProducts(JSON.parse(stored));
+      const loadedProducts = JSON.parse(stored);
+      console.log('Products loaded from localStorage:', loadedProducts);
+      setProducts(loadedProducts);
+    } else {
+      console.log('No products found in localStorage');
+      setProducts([]);
     }
-  }, []);
+  }, [user]);
 
   const staticUsers = getStaticUsers();
   const productionUsers = staticUsers.filter(u => u.role === 'production');
   const storesUsers = staticUsers.filter(u => u.role === 'stores');
 
   const selectedProduct = products.find(p => p.id === formData.productId);
+
+  const handleProductChange = (value: string) => {
+    console.log('Product selected:', value);
+    setFormData({ ...formData, productId: value });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +123,8 @@ const CreateLogEntry = ({ onCancel, onCreate }: CreateLogEntryProps) => {
     });
   };
 
+  console.log('Rendering CreateLogEntry, products count:', products.length);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
@@ -135,17 +148,23 @@ const CreateLogEntry = ({ onCancel, onCreate }: CreateLogEntryProps) => {
             </div>
             
             <div>
-              <Label htmlFor="product">Product</Label>
-              <Select value={formData.productId} onValueChange={(value) => setFormData({ ...formData, productId: value })}>
+              <Label htmlFor="product">Product ({products.length} available)</Label>
+              <Select value={formData.productId} onValueChange={handleProductChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select product" />
+                  <SelectValue placeholder={products.length > 0 ? "Select product" : "No products available"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name} - {product.batchNo} - {product.lineNo}
+                  {products.length > 0 ? (
+                    products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name} - {product.batchNo} - {product.lineNo}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-products" disabled>
+                      No products available
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
