@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, Package, FileText, Search, Users } from 'lucide-react';
+import { LogOut, Package, FileText, Search, Users, Clock } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: string;
@@ -20,6 +19,7 @@ const Navigation = ({ activeTab, setActiveTab }: NavigationProps) => {
 
     if (user?.role === 'admin' || user?.role === 'hod') {
       baseTabs.unshift({ id: 'products', label: 'Products', icon: Package });
+      baseTabs.push({ id: 'audit', label: 'Audit Trail', icon: Clock });
     }
 
     if (user?.role === 'admin') {
@@ -35,7 +35,7 @@ const Navigation = ({ activeTab, setActiveTab }: NavigationProps) => {
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-8">
             <h1 className="text-xl font-semibold text-gray-900">
-              Rejection Log Central
+              🏭 Rejection Log Central
             </h1>
             <div className="flex space-x-4">
               {getAvailableTabs().map((tab) => {
@@ -58,9 +58,12 @@ const Navigation = ({ activeTab, setActiveTab }: NavigationProps) => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">
-              {user?.name} ({user?.role})
-            </span>
+            <div className="text-sm text-gray-600">
+              <div className="font-medium">{user?.name}</div>
+              <div className="text-xs text-gray-500 capitalize">
+                {user?.role} • {user?.department}
+              </div>
+            </div>
             <Button
               variant="outline"
               size="sm"

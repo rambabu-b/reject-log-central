@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from './Navigation';
@@ -6,6 +5,7 @@ import ProductManagement from './ProductManagement';
 import LogEntryManagement from './LogEntryManagement';
 import SearchLogs from './SearchLogs';
 import UserManagement from './UserManagement';
+import AuditTrail from './AuditTrail';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('logs');
@@ -21,6 +21,8 @@ const Dashboard = () => {
         return <SearchLogs />;
       case 'users':
         return <UserManagement />;
+      case 'audit':
+        return <AuditTrail />;
       default:
         return <LogEntryManagement />;
     }

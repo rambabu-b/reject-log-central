@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save } from 'lucide-react';
-import { LogEntry } from '@/types';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft, Save, CheckCircle, XCircle, RotateCcw, AlertTriangle, Clock, FileText, User } from 'lucide-react';
+import { LogEntry, AuditLog } from '@/types';
 import { useAuth, getStaticUsers } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,12 +29,17 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     destructionDoneBy: entry.destructionDoneBy || '',
     destructionVerifiedBy: entry.destructionVerifiedBy || '',
     storesRemarks: entry.storesRemarks || '',
+    storesConfirmed: entry.storesConfirmed || false,
     qaRemarks: entry.qaRemarks || '',
+    hasVariations: entry.hasVariations || false,
+    variationDetails: entry.variationDetails || '',
+    reopenReason: '',
   });
   const { user } = useAuth();
   const { toast } = useToast();
 
   const staticUsers = getStaticUsers();
+  
   const canEdit = () => {
     if (user?.role === 'hod' || user?.role === 'admin') return true;
     
@@ -53,15 +58,45 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     return false;
   };
 
+  const canReopen = () => {
+    return (user?.role === 'hod' || user?.role === 'admin') && 
+           (entry.status === 'approved' || entry.status === 'rejected');
+  };
+
+  const canApprove = () => {
+    return user?.role === 'qa' && entry.status === 'qa_pending';
+  };
+
+  const createAuditLog = (action: string, details: string, previousStatus?: string, newStatus?: string): AuditLog => {
+    return {
+      id: Date.now().toString(),
+      logEntryId: entry.id,
+      action,
+      performedBy: user?.name || 'Unknown',
+      performedAt: new Date().toISOString(),
+      details,
+      previousStatus,
+      newStatus,
+    };
+  };
+
+  const saveAuditLog = (auditLog: AuditLog) => {
+    const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
+    existingLogs.push(auditLog);
+    localStorage.setItem('auditLogs', JSON.stringify(existingLogs));
+  };
+
   const handleSave = () => {
     let updatedEntry = { ...entry };
     let newStatus = entry.status;
+    let auditDetails = '';
 
+    // Production Team workflow
     if (user?.role === 'production' || (user?.role === 'hod' && entry.status === 'production_pending')) {
       if (!formData.polyBagNo || !formData.grossWeight) {
         toast({
           title: "Error",
-          description: "All production fields are required",
+          description: "Poly Bag No and Gross Weight are required",
           variant: "destructive",
         });
         return;
@@ -70,7 +105,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
       if (!formData.productionConfirmed) {
         toast({
           title: "Error",
-          description: "Please confirm the entry",
+          description: "Please confirm the production entry",
           variant: "destructive",
         });
         return;
@@ -83,16 +118,30 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
         productionConfirmed: formData.productionConfirmed,
         productionTimestamp: new Date().toISOString(),
         productionRemarks: formData.productionRemarks,
+        productionUser: user?.name,
+        lastModifiedBy: user?.name,
+        lastModifiedAt: new Date().toISOString(),
       };
       
       newStatus = 'stores_pending';
+      auditDetails = `Production data completed: Poly Bag No: ${formData.polyBagNo}, Gross Weight: ${formData.grossWeight}kg`;
     }
 
+    // Stores Team workflow
     if (user?.role === 'stores' || (user?.role === 'hod' && entry.status === 'stores_pending')) {
       if (!formData.grossWeightObserved || !formData.destructionDoneBy || !formData.destructionVerifiedBy) {
         toast({
           title: "Error",
-          description: "Gross weight observed, destruction done by, and destruction verified by are required",
+          description: "All stores fields are required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!formData.storesConfirmed) {
+        toast({
+          title: "Error",
+          description: "Please confirm the stores entry",
           variant: "destructive",
         });
         return;
@@ -106,21 +155,35 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
         destructionDoneBy: formData.destructionDoneBy,
         destructionVerifiedBy: formData.destructionVerifiedBy,
         storesRemarks: formData.storesRemarks,
+        storesConfirmed: formData.storesConfirmed,
+        hasVariations: formData.hasVariations,
+        variationDetails: formData.variationDetails,
+        lastModifiedBy: user?.name,
+        lastModifiedAt: new Date().toISOString(),
       };
       
       newStatus = 'qa_pending';
+      auditDetails = `Stores data completed: Observed Weight: ${formData.grossWeightObserved}kg, Destruction by: ${formData.destructionDoneBy}`;
+      if (formData.hasVariations) {
+        auditDetails += `, Variations noted: ${formData.variationDetails}`;
+      }
     }
 
+    // QA Team workflow
     if (user?.role === 'qa' || (user?.role === 'hod' && entry.status === 'qa_pending')) {
       updatedEntry = {
         ...updatedEntry,
-        qaSignedOff: true,
-        qaTimestamp: new Date().toISOString(),
         qaRemarks: formData.qaRemarks,
+        lastModifiedBy: user?.name,
+        lastModifiedAt: new Date().toISOString(),
       };
       
-      newStatus = 'completed';
+      auditDetails = `QA remarks updated: ${formData.qaRemarks}`;
     }
+
+    // Save audit log
+    const auditLog = createAuditLog('UPDATE', auditDetails, entry.status, newStatus);
+    saveAuditLog(auditLog);
 
     updatedEntry.status = newStatus;
     onUpdate(updatedEntry);
@@ -132,21 +195,143 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     });
   };
 
+  const handleApprove = () => {
+    const updatedEntry = {
+      ...entry,
+      status: 'approved' as const,
+      qaSignedOff: true,
+      qaTimestamp: new Date().toISOString(),
+      qaApprovalStatus: 'approved' as const,
+      qaUser: user?.name,
+      qaRemarks: formData.qaRemarks,
+      lastModifiedBy: user?.name,
+      lastModifiedAt: new Date().toISOString(),
+    };
+
+    // Save audit log
+    const auditLog = createAuditLog('APPROVE', `Entry approved by QA. Remarks: ${formData.qaRemarks}`, entry.status, 'approved');
+    saveAuditLog(auditLog);
+
+    onUpdate(updatedEntry);
+    toast({
+      title: "✅ Entry Approved",
+      description: "Rejection log entry has been successfully approved and signed off",
+    });
+  };
+
+  const handleReject = () => {
+    if (!formData.qaRemarks.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide remarks for rejection",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedEntry = {
+      ...entry,
+      status: 'rejected' as const,
+      qaSignedOff: false,
+      qaTimestamp: new Date().toISOString(),
+      qaApprovalStatus: 'rejected' as const,
+      qaUser: user?.name,
+      qaRemarks: formData.qaRemarks,
+      lastModifiedBy: user?.name,
+      lastModifiedAt: new Date().toISOString(),
+    };
+
+    // Save audit log
+    const auditLog = createAuditLog('REJECT', `Entry rejected by QA. Reason: ${formData.qaRemarks}`, entry.status, 'rejected');
+    saveAuditLog(auditLog);
+
+    onUpdate(updatedEntry);
+    toast({
+      title: "❌ Entry Rejected",
+      description: "Entry has been rejected and sent back for revision",
+      variant: "destructive",
+    });
+  };
+
+  const handleReopen = () => {
+    if (!formData.reopenReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a reason for reopening",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedEntry = {
+      ...entry,
+      status: 'reopened' as const,
+      reopenedBy: user?.name,
+      reopenedAt: new Date().toISOString(),
+      reopenReason: formData.reopenReason,
+      lastModifiedBy: user?.name,
+      lastModifiedAt: new Date().toISOString(),
+    };
+
+    // Save audit log
+    const auditLog = createAuditLog('REOPEN', `Entry reopened by ${user?.role.toUpperCase()}. Reason: ${formData.reopenReason}`, entry.status, 'reopened');
+    saveAuditLog(auditLog);
+
+    onUpdate(updatedEntry);
+    toast({
+      title: "🔄 Entry Reopened",
+      description: "Entry has been reopened for modifications",
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      draft: { variant: 'secondary' as const, label: 'Draft' },
-      production_pending: { variant: 'destructive' as const, label: 'Production Pending' },
-      stores_pending: { variant: 'destructive' as const, label: 'Stores Pending' },
-      qa_pending: { variant: 'destructive' as const, label: 'QA Pending' },
-      completed: { variant: 'default' as const, label: 'Completed' },
+      draft: { variant: 'secondary' as const, label: 'Draft', icon: FileText },
+      production_pending: { variant: 'destructive' as const, label: 'Production Pending', icon: Clock },
+      stores_pending: { variant: 'destructive' as const, label: 'Stores Pending', icon: Clock },
+      qa_pending: { variant: 'destructive' as const, label: 'QA Review Pending', icon: Clock },
+      approved: { variant: 'default' as const, label: '✅ Approved', icon: CheckCircle },
+      rejected: { variant: 'destructive' as const, label: '❌ Rejected', icon: XCircle },
+      reopened: { variant: 'secondary' as const, label: '🔄 Reopened', icon: RotateCcw },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+    const Icon = config.icon;
     
     return (
-      <Badge variant={config.variant}>
+      <Badge variant={config.variant} className="flex items-center gap-1 text-sm px-3 py-1">
+        <Icon className="w-4 h-4" />
         {config.label}
       </Badge>
+    );
+  };
+
+  const getWorkflowProgress = () => {
+    const steps = [
+      { key: 'production', label: 'Production', completed: entry.productionConfirmed },
+      { key: 'stores', label: 'Stores', completed: entry.storesConfirmed },
+      { key: 'qa', label: 'QA Review', completed: entry.qaSignedOff },
+    ];
+
+    return (
+      <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+        <h4 className="font-medium text-gray-700">Workflow Progress:</h4>
+        {steps.map((step, index) => (
+          <div key={step.key} className="flex items-center">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+              step.completed ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
+            }`}>
+              {step.completed ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+            </div>
+            <span className={`ml-2 text-sm ${step.completed ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
+              {step.label}
+            </span>
+            {index < steps.length - 1 && (
+              <div className={`w-8 h-0.5 mx-2 ${step.completed ? 'bg-green-500' : 'bg-gray-300'}`} />
+            )}
+          </div>
+        ))}
+      </div>
     );
   };
 
@@ -157,16 +342,45 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
           <Button variant="ghost" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <CardTitle>Log Entry Details</CardTitle>
+          <CardTitle>Rejection Log Entry Details</CardTitle>
           {getStatusBadge(entry.status)}
+          {entry.hasVariations && (
+            <Badge variant="outline" className="flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              Variations Noted
+            </Badge>
+          )}
         </div>
-        {canEdit() && !editMode && (
-          <Button onClick={() => setEditMode(true)}>
-            Edit
-          </Button>
-        )}
+        <div className="flex space-x-2">
+          {canEdit() && !editMode && (
+            <Button onClick={() => setEditMode(true)}>
+              Edit
+            </Button>
+          )}
+          {canApprove() && (
+            <>
+              <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                ✅ Approve & Sign Off
+              </Button>
+              <Button onClick={handleReject} variant="destructive">
+                <XCircle className="w-4 h-4 mr-2" />
+                ❌ Reject
+              </Button>
+            </>
+          )}
+          {canReopen() && (
+            <Button onClick={() => setEditMode(true)} variant="outline">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              🔄 Reopen
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Workflow Progress */}
+        {getWorkflowProgress()}
+
         {/* Basic Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -185,26 +399,46 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
             <Label>Line No</Label>
             <div className="text-sm font-medium">{entry.lineNo}</div>
           </div>
+          <div>
+            <Label>Created By</Label>
+            <div className="text-sm font-medium flex items-center gap-2">
+              <User className="w-4 h-4" />
+              {staticUsers.find(u => u.id === entry.createdBy)?.name || 'Unknown'}
+              <Badge variant="outline" className="text-xs">
+                {entry.createdByRole?.toUpperCase()}
+              </Badge>
+            </div>
+          </div>
+          <div>
+            <Label>Created At</Label>
+            <div className="text-sm font-medium">{new Date(entry.createdAt || entry.date).toLocaleString()}</div>
+          </div>
         </div>
 
+        <Separator />
+
         {/* Production Section */}
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold mb-4">Production Details</h3>
+        <div>
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            🏭 Production Details
+            {entry.productionConfirmed && <CheckCircle className="w-5 h-5 text-green-600" />}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="polyBagNo">Poly Bag No</Label>
+              <Label htmlFor="polyBagNo">Poly Bag No *</Label>
               {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
                 <Input
                   id="polyBagNo"
                   value={formData.polyBagNo}
                   onChange={(e) => setFormData({ ...formData, polyBagNo: e.target.value })}
+                  required
                 />
               ) : (
                 <div className="text-sm font-medium">{entry.polyBagNo || 'Not entered'}</div>
               )}
             </div>
             <div>
-              <Label htmlFor="grossWeight">Gross Weight (kg)</Label>
+              <Label htmlFor="grossWeight">Gross Weight (kg) *</Label>
               {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
                 <Input
                   id="grossWeight"
@@ -212,6 +446,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                   step="0.01"
                   value={formData.grossWeight}
                   onChange={(e) => setFormData({ ...formData, grossWeight: e.target.value })}
+                  required
                 />
               ) : (
                 <div className="text-sm font-medium">{entry.grossWeight || 'Not entered'}</div>
@@ -227,6 +462,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                   id="productionRemarks"
                   value={formData.productionRemarks}
                   onChange={(e) => setFormData({ ...formData, productionRemarks: e.target.value })}
+                  placeholder="Enter any production-related remarks"
                 />
               </div>
               <div className="flex items-center space-x-2 mt-4">
@@ -236,7 +472,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                   onCheckedChange={(checked) => setFormData({ ...formData, productionConfirmed: checked as boolean })}
                 />
                 <Label htmlFor="productionConfirm">
-                  Confirm entry (Date and time will be recorded)
+                  ✅ Confirm production entry (Date and time will be recorded)
                 </Label>
               </div>
             </>
@@ -249,9 +485,15 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                 </div>
               )}
               {entry.productionTimestamp && (
-                <div className="mt-4">
-                  <Label>Production Confirmed At</Label>
-                  <div className="text-sm">{new Date(entry.productionTimestamp).toLocaleString()}</div>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Production Confirmed At</Label>
+                    <div className="text-sm">{new Date(entry.productionTimestamp).toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <Label>Production User</Label>
+                    <div className="text-sm">{entry.productionUser || 'Unknown'}</div>
+                  </div>
                 </div>
               )}
             </>
@@ -259,116 +501,238 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
         </div>
 
         {/* Stores Section */}
-        {(entry.status === 'stores_pending' || entry.status === 'qa_pending' || entry.status === 'completed') && (
-          <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold mb-4">Stores Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="grossWeightObserved">Gross Weight Observed (kg)</Label>
-                {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
-                  <Input
-                    id="grossWeightObserved"
-                    type="number"
-                    step="0.01"
-                    value={formData.grossWeightObserved}
-                    onChange={(e) => setFormData({ ...formData, grossWeightObserved: e.target.value })}
-                    required
-                  />
-                ) : (
-                  <div className="text-sm font-medium">{entry.grossWeightObserved || 'Not entered'}</div>
-                )}
+        {(entry.status === 'stores_pending' || entry.status === 'qa_pending' || entry.status === 'approved' || entry.status === 'rejected') && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                📦 Stores Details
+                {entry.storesConfirmed && <CheckCircle className="w-5 h-5 text-green-600" />}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="grossWeightObserved">Gross Weight Observed (kg) *</Label>
+                  {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
+                    <Input
+                      id="grossWeightObserved"
+                      type="number"
+                      step="0.01"
+                      value={formData.grossWeightObserved}
+                      onChange={(e) => setFormData({ ...formData, grossWeightObserved: e.target.value })}
+                      required
+                    />
+                  ) : (
+                    <div className="text-sm font-medium">{entry.grossWeightObserved || 'Not entered'}</div>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="destructionDoneBy">Destruction Done By *</Label>
+                  {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
+                    <Input
+                      id="destructionDoneBy"
+                      value={formData.destructionDoneBy}
+                      onChange={(e) => setFormData({ ...formData, destructionDoneBy: e.target.value })}
+                      placeholder="Enter name of person who performed destruction"
+                      required
+                    />
+                  ) : (
+                    <div className="text-sm font-medium">{entry.destructionDoneBy || 'Not entered'}</div>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="destructionVerifiedBy">Destruction Verified By *</Label>
+                  {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
+                    <Input
+                      id="destructionVerifiedBy"
+                      value={formData.destructionVerifiedBy}
+                      onChange={(e) => setFormData({ ...formData, destructionVerifiedBy: e.target.value })}
+                      placeholder="Enter name of person who verified destruction"
+                      required
+                    />
+                  ) : (
+                    <div className="text-sm font-medium">{entry.destructionVerifiedBy || 'Not entered'}</div>
+                  )}
+                </div>
               </div>
-              <div>
-                <Label htmlFor="destructionDoneBy">Destruction Done By</Label>
-                {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
-                  <Input
-                    id="destructionDoneBy"
-                    value={formData.destructionDoneBy}
-                    onChange={(e) => setFormData({ ...formData, destructionDoneBy: e.target.value })}
-                    placeholder="Enter name of person who performed destruction"
-                    required
-                  />
-                ) : (
-                  <div className="text-sm font-medium">{entry.destructionDoneBy || 'Not entered'}</div>
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="destructionVerifiedBy">Destruction Verified By</Label>
-                {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
-                  <Input
-                    id="destructionVerifiedBy"
-                    value={formData.destructionVerifiedBy}
-                    onChange={(e) => setFormData({ ...formData, destructionVerifiedBy: e.target.value })}
-                    placeholder="Enter name of person who verified destruction"
-                    required
-                  />
-                ) : (
-                  <div className="text-sm font-medium">{entry.destructionVerifiedBy || 'Not entered'}</div>
-                )}
-              </div>
+              
+              {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
+                <>
+                  <div className="mt-4">
+                    <Label htmlFor="storesRemarks">Stores Remarks</Label>
+                    <Textarea
+                      id="storesRemarks"
+                      value={formData.storesRemarks}
+                      onChange={(e) => setFormData({ ...formData, storesRemarks: e.target.value })}
+                      placeholder="Enter any stores-related remarks"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2 mt-4">
+                    <Checkbox
+                      id="hasVariations"
+                      checked={formData.hasVariations}
+                      onCheckedChange={(checked) => setFormData({ ...formData, hasVariations: checked as boolean })}
+                    />
+                    <Label htmlFor="hasVariations">
+                      ⚠️ Variations identified that require QA approval
+                    </Label>
+                  </div>
+                  {formData.hasVariations && (
+                    <div className="mt-4">
+                      <Label htmlFor="variationDetails">Variation Details *</Label>
+                      <Textarea
+                        id="variationDetails"
+                        value={formData.variationDetails}
+                        onChange={(e) => setFormData({ ...formData, variationDetails: e.target.value })}
+                        placeholder="Describe the variations identified"
+                        required
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-2 mt-4">
+                    <Checkbox
+                      id="storesConfirm"
+                      checked={formData.storesConfirmed}
+                      onCheckedChange={(checked) => setFormData({ ...formData, storesConfirmed: checked as boolean })}
+                    />
+                    <Label htmlFor="storesConfirm">
+                      ✅ Confirm stores entry (Date and time will be recorded)
+                    </Label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {entry.storesRemarks && (
+                    <div className="mt-4">
+                      <Label>Stores Remarks</Label>
+                      <div className="text-sm">{entry.storesRemarks}</div>
+                    </div>
+                  )}
+                  {entry.hasVariations && entry.variationDetails && (
+                    <div className="mt-4">
+                      <Label>⚠️ Variation Details</Label>
+                      <div className="text-sm p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        {entry.variationDetails}
+                      </div>
+                    </div>
+                  )}
+                  {entry.recordedTimestamp && (
+                    <div className="mt-4">
+                      <Label>Stores Confirmed At</Label>
+                      <div className="text-sm">{new Date(entry.recordedTimestamp).toLocaleString()} by {entry.recordedBy}</div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            
-            {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
-              <div className="mt-4">
-                <Label htmlFor="storesRemarks">Stores Remarks</Label>
-                <Textarea
-                  id="storesRemarks"
-                  value={formData.storesRemarks}
-                  onChange={(e) => setFormData({ ...formData, storesRemarks: e.target.value })}
-                  placeholder="Enter any additional remarks"
-                />
-              </div>
-            ) : (
-              <>
-                {entry.storesRemarks && (
-                  <div className="mt-4">
-                    <Label>Stores Remarks</Label>
-                    <div className="text-sm">{entry.storesRemarks}</div>
-                  </div>
-                )}
-                {entry.recordedTimestamp && (
-                  <div className="mt-4">
-                    <Label>Recorded At</Label>
-                    <div className="text-sm">{new Date(entry.recordedTimestamp).toLocaleString()} by {entry.recordedBy}</div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          </>
         )}
 
         {/* QA Section */}
-        {(entry.status === 'qa_pending' || entry.status === 'completed') && (
-          <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold mb-4">QA Sign-off</h3>
-            
-            {editMode && (user?.role === 'qa' || user?.role === 'hod') && entry.status === 'qa_pending' ? (
+        {(entry.status === 'qa_pending' || entry.status === 'approved' || entry.status === 'rejected') && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                🔬 QA Review & Sign-off
+                {entry.qaSignedOff && <CheckCircle className="w-5 h-5 text-green-600" />}
+              </h3>
+              
+              {editMode && (user?.role === 'qa' || user?.role === 'hod') && entry.status === 'qa_pending' ? (
+                <div>
+                  <Label htmlFor="qaRemarks">QA Remarks *</Label>
+                  <Textarea
+                    id="qaRemarks"
+                    value={formData.qaRemarks}
+                    onChange={(e) => setFormData({ ...formData, qaRemarks: e.target.value })}
+                    placeholder="Enter QA review comments and remarks (required for approval/rejection)"
+                  />
+                </div>
+              ) : (
+                <>
+                  {entry.qaRemarks && (
+                    <div>
+                      <Label>QA Remarks</Label>
+                      <div className="text-sm p-3 bg-blue-50 border border-blue-200 rounded-md">{entry.qaRemarks}</div>
+                    </div>
+                  )}
+                  {entry.qaTimestamp && (
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>QA Action Taken At</Label>
+                        <div className="text-sm">{new Date(entry.qaTimestamp).toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <Label>QA User</Label>
+                        <div className="text-sm">{entry.qaUser || 'Unknown'}</div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Reopen Section for HOD/Admin */}
+        {canReopen() && editMode && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-lg font-semibold mb-4">🔄 Reopen Entry</h3>
               <div>
-                <Label htmlFor="qaRemarks">QA Remarks</Label>
+                <Label htmlFor="reopenReason">Reason for Reopening *</Label>
                 <Textarea
-                  id="qaRemarks"
-                  value={formData.qaRemarks}
-                  onChange={(e) => setFormData({ ...formData, qaRemarks: e.target.value })}
-                  placeholder="Enter any remarks for the QA sign-off"
+                  id="reopenReason"
+                  value={formData.reopenReason}
+                  onChange={(e) => setFormData({ ...formData, reopenReason: e.target.value })}
+                  placeholder="Provide a detailed reason for reopening this entry"
+                  required
                 />
               </div>
-            ) : (
-              <>
-                {entry.qaRemarks && (
-                  <div>
-                    <Label>QA Remarks</Label>
-                    <div className="text-sm">{entry.qaRemarks}</div>
-                  </div>
+              <Button onClick={handleReopen} className="mt-4" variant="outline">
+                <RotateCcw className="w-4 h-4 mr-2" />
+                🔄 Reopen Entry
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Audit Information */}
+        {entry.lastModifiedBy && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-lg font-semibold mb-4">📋 Audit Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label>Last Modified By</Label>
+                  <div>{entry.lastModifiedBy}</div>
+                </div>
+                <div>
+                  <Label>Last Modified At</Label>
+                  <div>{entry.lastModifiedAt ? new Date(entry.lastModifiedAt).toLocaleString() : 'N/A'}</div>
+                </div>
+                {entry.reopenedBy && (
+                  <>
+                    <div>
+                      <Label>Reopened By</Label>
+                      <div>{entry.reopenedBy}</div>
+                    </div>
+                    <div>
+                      <Label>Reopened At</Label>
+                      <div>{entry.reopenedAt ? new Date(entry.reopenedAt).toLocaleString() : 'N/A'}</div>
+                    </div>
+                    {entry.reopenReason && (
+                      <div className="md:col-span-2">
+                        <Label>Reopen Reason</Label>
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">{entry.reopenReason}</div>
+                      </div>
+                    )}
+                  </>
                 )}
-                {entry.qaTimestamp && (
-                  <div className="mt-4">
-                    <Label>QA Signed Off At</Label>
-                    <div className="text-sm">{new Date(entry.qaTimestamp).toLocaleString()}</div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          </>
         )}
 
         {editMode && (

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Product, LogEntry } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,48 +14,62 @@ interface FormData {
   productionRemarks: string;
 }
 
-// Sample products for pharmaceutical process flow
+// Enhanced sample products for pharmaceutical rejection log system
 const getSampleProducts = (): Product[] => [
   {
     id: '1',
     name: 'Paracetamol Tablets 500mg',
-    batchNo: 'PCT001',
+    batchNo: 'PCT001-2024',
     lineNo: 'Line-A1',
     createdAt: new Date().toISOString(),
   },
   {
     id: '2',
     name: 'Amoxicillin Capsules 250mg',
-    batchNo: 'AMX002',
+    batchNo: 'AMX002-2024',
     lineNo: 'Line-B2',
     createdAt: new Date().toISOString(),
   },
   {
     id: '3',
     name: 'Ibuprofen Tablets 400mg',
-    batchNo: 'IBU003',
+    batchNo: 'IBU003-2024',
     lineNo: 'Line-A1',
     createdAt: new Date().toISOString(),
   },
   {
     id: '4',
     name: 'Metformin Tablets 850mg',
-    batchNo: 'MET004',
+    batchNo: 'MET004-2024',
     lineNo: 'Line-C3',
     createdAt: new Date().toISOString(),
   },
   {
     id: '5',
     name: 'Omeprazole Capsules 20mg',
-    batchNo: 'OME005',
+    batchNo: 'OME005-2024',
     lineNo: 'Line-B2',
     createdAt: new Date().toISOString(),
   },
   {
     id: '6',
     name: 'Aspirin Tablets 75mg',
-    batchNo: 'ASP006',
+    batchNo: 'ASP006-2024',
     lineNo: 'Line-A1',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '7',
+    name: 'Ciprofloxacin Tablets 500mg',
+    batchNo: 'CIP007-2024',
+    lineNo: 'Line-C3',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '8',
+    name: 'Losartan Tablets 50mg',
+    batchNo: 'LOS008-2024',
+    lineNo: 'Line-B2',
     createdAt: new Date().toISOString(),
   }
 ];
@@ -91,6 +104,14 @@ export const useCreateLogEntryForm = (onCreate: (entry: LogEntry) => void) => {
       localStorage.setItem('products', JSON.stringify(sampleProducts));
       console.log('Sample products initialized:', sampleProducts);
     }
+
+    // Auto-assign current user if they are production role
+    if (user?.role === 'production') {
+      setFormData(prev => ({
+        ...prev,
+        assignedProductionUser: user.id
+      }));
+    }
   }, [user]);
 
   const selectedProduct = products.find(p => p.id === formData.productId);
@@ -109,11 +130,21 @@ export const useCreateLogEntryForm = (onCreate: (entry: LogEntry) => void) => {
       return false;
     }
 
+    // For production users creating entries
     if (user?.role === 'production') {
-      if (!formData.assignedStoresUser || !formData.polyBagNo || !formData.grossWeight) {
+      if (!formData.assignedStoresUser) {
         toast({
           title: "Error",
-          description: "All production fields are required",
+          description: "Please assign a stores team member",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (!formData.polyBagNo || !formData.grossWeight) {
+        toast({
+          title: "Error",
+          description: "Poly Bag No and Gross Weight are required for production entries",
           variant: "destructive",
         });
         return false;
@@ -122,20 +153,23 @@ export const useCreateLogEntryForm = (onCreate: (entry: LogEntry) => void) => {
       if (!formData.productionConfirmed) {
         toast({
           title: "Error",
-          description: "Please confirm the entry",
+          description: "Please confirm the production entry",
           variant: "destructive",
         });
         return false;
       }
     }
 
-    if (user?.role === 'hod' && (!formData.assignedProductionUser || !formData.assignedStoresUser)) {
-      toast({
-        title: "Error",
-        description: "Please assign both production and stores users",
-        variant: "destructive",
-      });
-      return false;
+    // For HOD creating entries
+    if (user?.role === 'hod') {
+      if (!formData.assignedProductionUser || !formData.assignedStoresUser) {
+        toast({
+          title: "Error",
+          description: "Please assign both production and stores team members",
+          variant: "destructive",
+        });
+        return false;
+      }
     }
 
     return true;
@@ -146,6 +180,15 @@ export const useCreateLogEntryForm = (onCreate: (entry: LogEntry) => void) => {
     
     if (!validateForm()) return;
 
+    // Determine initial status based on user role and completion
+    let initialStatus: LogEntry['status'] = 'production_pending';
+    
+    if (user?.role === 'production' && formData.productionConfirmed) {
+      initialStatus = 'stores_pending';
+    } else if (user?.role === 'hod') {
+      initialStatus = 'production_pending';
+    }
+
     const newEntry: LogEntry = {
       id: Date.now().toString(),
       date: formData.date,
@@ -155,20 +198,29 @@ export const useCreateLogEntryForm = (onCreate: (entry: LogEntry) => void) => {
       lineNo: selectedProduct?.lineNo || '',
       createdBy: user?.id || '',
       createdByRole: user?.role || '',
+      createdAt: new Date().toISOString(),
       assignedProductionUser: formData.assignedProductionUser || (user?.role === 'production' ? user.id : ''),
       assignedStoresUser: formData.assignedStoresUser,
-      status: user?.role === 'production' && formData.productionConfirmed ? 'stores_pending' : 'production_pending',
-      polyBagNo: formData.polyBagNo,
+      status: initialStatus,
+      
+      // Production fields (if filled by production user)
+      polyBagNo: formData.polyBagNo || undefined,
       grossWeight: formData.grossWeight ? parseFloat(formData.grossWeight) : undefined,
       productionConfirmed: formData.productionConfirmed,
       productionTimestamp: formData.productionConfirmed ? new Date().toISOString() : undefined,
-      productionRemarks: formData.productionRemarks,
+      productionRemarks: formData.productionRemarks || undefined,
+      productionUser: user?.role === 'production' ? user.name : undefined,
+      
+      // Audit fields
+      lastModifiedBy: user?.name,
+      lastModifiedAt: new Date().toISOString(),
     };
 
     onCreate(newEntry);
+    
     toast({
       title: "Success",
-      description: "Log entry created successfully",
+      description: `Rejection log entry created successfully and assigned to ${initialStatus === 'stores_pending' ? 'stores team' : 'production team'}`,
     });
   };
 
