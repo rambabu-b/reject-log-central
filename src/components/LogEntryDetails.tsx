@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -118,7 +119,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
       };
       
       newStatus = 'stores_pending';
-      auditDetails = `Production data completed: Poly Bag No: ${formData.polyBagNo}, Gross Weight: ${formData.grossWeight}kg`;
+      auditDetails = `Production data completed and signed off: Poly Bag No: ${formData.polyBagNo}, Gross Weight: ${formData.grossWeight}kg`;
     }
 
     // Stores Team workflow
@@ -157,7 +158,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
       };
       
       newStatus = 'qa_pending';
-      auditDetails = `Stores data completed: Observed Weight: ${formData.grossWeightObserved}kg, Destruction by: ${formData.destructionDoneBy}`;
+      auditDetails = `Stores data completed and signed off: Observed Weight: ${formData.grossWeightObserved}kg, Destruction by: ${formData.destructionDoneBy}`;
       if (formData.hasVariations) {
         auditDetails += `, Variations noted: ${formData.variationDetails}`;
       }
@@ -320,6 +321,19 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     return assignedUser ? assignedUser.name : `${teamType.charAt(0).toUpperCase() + teamType.slice(1)} Team`;
   };
 
+  const getAssignedUserDisplay = (userId: string | undefined, teamType: string) => {
+    if (!userId) return `${teamType.charAt(0).toUpperCase() + teamType.slice(1)} Team`;
+    const assignedUser = staticUsers.find(u => u.id === userId);
+    if (!assignedUser) return `${teamType.charAt(0).toUpperCase() + teamType.slice(1)} Team`;
+    
+    return (
+      <div className="flex items-center gap-2">
+        <span className="capitalize text-sm font-medium text-blue-600">{teamType}:</span>
+        <span className="font-medium">{assignedUser.name}</span>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -330,7 +344,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
           <CardTitle>Rejection Log Entry Details</CardTitle>
           {getStatusBadge(entry.status)}
           {entry.hasVariations && (
-            <Badge variant="outline" className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-300">
+            <Badge variant="outline" className="flex items-center gap-1 bg-yellow-600 text-white border-yellow-600">
               <AlertTriangle className="w-3 h-3" />
               Variations Noted
             </Badge>
@@ -394,11 +408,11 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
           </div>
           <div>
             <Label className="text-sm font-medium text-gray-600">Assigned Production User</Label>
-            <div className="text-sm font-medium mt-1">{getAssignedUserName(entry.assignedProductionUser, 'production')}</div>
+            <div className="text-sm font-medium mt-1">{getAssignedUserDisplay(entry.assignedProductionUser, 'production')}</div>
           </div>
           <div>
             <Label className="text-sm font-medium text-gray-600">Assigned Stores User</Label>
-            <div className="text-sm font-medium mt-1">{getAssignedUserName(entry.assignedStoresUser, 'stores')}</div>
+            <div className="text-sm font-medium mt-1">{getAssignedUserDisplay(entry.assignedStoresUser, 'stores')}</div>
           </div>
         </div>
 
@@ -464,7 +478,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       onCheckedChange={(checked) => setFormData({ ...formData, productionConfirmed: checked as boolean })}
                     />
                     <Label htmlFor="productionConfirm" className="text-sm font-medium">
-                      ✅ Confirm production entry and sign off (Date and time will be recorded automatically)
+                      ✅ Confirm production entry and sign off (Date, time and user details will be recorded automatically)
                     </Label>
                   </div>
                 </>
@@ -594,7 +608,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       onCheckedChange={(checked) => setFormData({ ...formData, storesConfirmed: checked as boolean })}
                     />
                     <Label htmlFor="storesConfirm" className="text-sm font-medium">
-                      ✅ Confirm stores entry and sign off (Date and time will be recorded automatically)
+                      ✅ Confirm stores entry and sign off (Date, time and user details will be recorded automatically)
                     </Label>
                   </div>
                 </>
