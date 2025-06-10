@@ -326,7 +326,7 @@ const ProductManagement = () => {
                       <div className="flex space-x-2">
                         {editingId === product.id ? (
                           <>
-                            <Button size="sm" onClick={handleUpdate}>
+                            <Button size="sm\" onClick={handleUpdate}>
                               <Save className="w-4 h-4" />
                             </Button>
                             <Button size="sm" variant="outline" onClick={cancelEdit}>
