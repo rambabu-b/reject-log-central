@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { LogEntry, Product } from '@/types';
 import LogEntryList from './LogEntryList';
 import LogEntryDetails from './LogEntryDetails';
 import { useToast } from '@/hooks/use-toast';
+import * as XLSX from 'xlsx';
 
 const SearchLogs = () => {
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
@@ -33,7 +33,7 @@ const SearchLogs = () => {
     if (storedLogs) {
       const logs = JSON.parse(storedLogs);
       setLogEntries(logs);
-      setFilteredEntries(logs);
+      setFilteredEntries(logs); // Show all logs by default
     }
     
     if (storedProducts) {
@@ -89,7 +89,7 @@ const SearchLogs = () => {
       filtered = filtered.filter(entry => entry.status === filters.status);
     }
 
-    setFilteredEntries(filtered);
+    setFilteredEntries(filtered); // Show filtered results
 
     // Show search results message
     toast({
@@ -98,9 +98,22 @@ const SearchLogs = () => {
     });
   };
 
-  const handleExport = (format: 'csv' | 'pdf') => {
-    // Check if there are results to export
-    if (filteredEntries.length === 0) {
+  const isFilterActive = () => {
+    return (
+      filters.productName.trim() ||
+      filters.batchNo.trim() ||
+      filters.lineNo.trim() ||
+      filters.dateFrom ||
+      filters.dateTo ||
+      (filters.status && filters.status !== 'all')
+    );
+  };
+
+  const handleExport = (format: 'csv' | 'xlsx') => {
+    // Use all logs if no filter is active, otherwise use filtered entries
+    const exportEntries = isFilterActive() ? filteredEntries : logEntries;
+
+    if (exportEntries.length === 0) {
       toast({
         title: "No Data to Export",
         description: "No search results found. Please adjust your search criteria.",
@@ -108,49 +121,119 @@ const SearchLogs = () => {
       });
       return;
     }
-
-    if (format === 'csv') {
-      const csvHeaders = [
-        'Date', 'Product Name', 'Batch No', 'Line No', 'Status', 
-        'Poly Bag No', 'Gross Weight', 'Gross Weight Observed', 
-        'Production Remarks', 'Stores Remarks', 'QA Remarks',
-        'Created By', 'Production User', 'Destruction Done By', 'Destruction Verified By'
+  
+    if (format === 'xlsx') {
+      // Prepare data rows
+      const data = exportEntries.map(entry => [
+        entry.date,
+        entry.productName,
+        entry.batchNo,
+        entry.lineNo,
+        entry.polyBagNo || '',
+        entry.grossWeight ?? '',
+        entry.productionUser
+          ? `${entry.productionUser} (${entry.productionTimestamp ? new Date(entry.productionTimestamp).toLocaleDateString() : ''})`
+          : '',
+        entry.grossWeightObserved ?? '',
+        entry.recordedBy
+          ? `${entry.recordedBy} (${entry.recordedTimestamp ? new Date(entry.recordedTimestamp).toLocaleDateString() : ''})`
+          : '',
+        entry.destructionDoneBy || '',
+        entry.destructionVerifiedBy || '',
+        entry.qaRemarks || ''
+      ]);
+  
+      // Multi-row header
+      const header1 = [
+        "Date",
+        "Product Name",
+        "Batch No.",
+        "Line No.",
+        "PRODUCTION", "", "",
+        "STORES", "", "",
+        "Remarks (If any)"
       ];
-      
-      const csvContent = [
-        csvHeaders.join(','),
-        ...filteredEntries.map(entry => [
-          entry.date,
-          `"${entry.productName}"`,
-          entry.batchNo,
-          entry.lineNo,
-          entry.status,
-          entry.polyBagNo || '',
-          entry.grossWeight || '',
-          entry.grossWeightObserved || '',
-          `"${entry.productionRemarks || ''}"`,
-          `"${entry.storesRemarks || ''}"`,
-          `"${entry.qaRemarks || ''}"`,
-          entry.createdByRole || '',
-          entry.productionUser || '',
-          entry.destructionDoneBy || '',
-          entry.destructionVerifiedBy || ''
-        ].join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `rejection_logs_${new Date().toISOString().split('T')[0]}_${filteredEntries.length}_entries.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
+      const header2 = [
+        "", "", "", "",
+        "Poly bag No.",
+        "Gross wt. (kg)",
+        "Activity done By (Sign/Date)",
+        "Gross wt. observed (kg)",
+        "Recorded by (Sign/Date)",
+        "Destruction done by (Name)",
+        "Destruction verified by (Sign/Date)",
+        ""
+      ];
+  
+      // Combine headers and data
+      const wsData = [header1, header2, ...data];
+  
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+  
+      // Merge cells for "PRODUCTION", "STORES", "Date", "Product Name", "Batch No.", "Line No.", and "Remarks"
+      ws['!merges'] = [
+        { s: { r: 0, c: 4 }, e: { r: 0, c: 6 } }, // PRODUCTION
+        { s: { r: 0, c: 7 }, e: { r: 0, c: 10 } }, // STORES
+        { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // Date
+        { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // Product Name
+        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, // Batch No.
+        { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } }, // Line No.
+        { s: { r: 0, c: 11 }, e: { r: 1, c: 11 } } // Remarks
+      ];
+  
+      // Set column widths for better appearance
+      ws['!cols'] = [
+        { wch: 12 }, // Date
+        { wch: 25 }, // Product Name
+        { wch: 12 }, // Batch No.
+        { wch: 10 }, // Line No.
+        { wch: 14 }, // Poly bag No.
+        { wch: 14 }, // Gross wt.
+        { wch: 24 }, // Activity done By
+        { wch: 18 }, // Gross wt. observed
+        { wch: 24 }, // Recorded by
+        { wch: 22 }, // Destruction done by
+        { wch: 28 }, // Destruction verified by
+        { wch: 30 }  // Remarks
+      ];
+  
+      // Apply styles: bold and center-align headers using a more explicit approach
+      const headerStyle = {
+        font: { bold: true },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true }
+      };
+  
+      // Apply styles to first header row (row 0)
+      header1.forEach((_, col) => {
+        const cell = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!ws[cell]) ws[cell] = { t: 's', v: header1[col] || '' };
+        ws[cell].s = headerStyle;
+      });
+  
+      // Apply styles to second header row (row 1)
+      header2.forEach((_, col) => {
+        const cell = XLSX.utils.encode_cell({ r: 1, c: col });
+        if (!ws[cell]) ws[cell] = { t: 's', v: header2[col] || '' };
+        ws[cell].s = headerStyle;
+      });
+  
+      // Explicitly ensure "Remarks (If any)" cell content and style
+      const remarksCell = XLSX.utils.encode_cell({ r: 0, c: 11 });
+      ws[remarksCell] = {
+        t: 's',
+        v: "Remarks (If any)",
+        s: headerStyle
+      };
+  
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Rejection Logs");
+  
+      XLSX.writeFile(wb, `rejection_logs_${new Date().toISOString().split('T')[0]}_${exportEntries.length}_entries.xlsx`);
+  
       toast({
         title: "Export Successful",
-        description: `Exported ${filteredEntries.length} entries to CSV file`,
+        description: `Exported ${exportEntries.length} entries to Excel file`,
       });
     }
   };
@@ -289,23 +372,23 @@ const SearchLogs = () => {
               <X className="w-4 h-4 mr-2" />
               Clear Filters
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => handleExport('csv')} 
-              className="w-full sm:w-auto"
-              disabled={filteredEntries.length === 0}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV ({filteredEntries.length})
-            </Button>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">
-            Search Results ({filteredEntries.length} entries)
+          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <span>Search Results ({filteredEntries.length} entries)</span>
+            <Button
+              variant="outline"
+              onClick={() => handleExport('xlsx')}
+              className="w-full sm:w-auto"
+              disabled={filteredEntries.length === 0}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Excel ({filteredEntries.length})
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">

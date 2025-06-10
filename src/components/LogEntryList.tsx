@@ -19,8 +19,8 @@ const LogEntryList = ({ entries, onSelectEntry }: LogEntryListProps) => {
       production_pending: { variant: 'destructive' as const, label: 'Production Pending', icon: Clock, className: '' },
       stores_pending: { variant: 'destructive' as const, label: 'Stores Pending', icon: Clock, className: '' },
       qa_pending: { variant: 'destructive' as const, label: 'QA Review Pending', icon: Clock, className: '' },
-      approved: { variant: 'default' as const, label: '✅ Approved', icon: CheckCircle, className: 'bg-green-600 hover:bg-green-700 text-white' },
-      rejected: { variant: 'destructive' as const, label: '❌ Rejected', icon: XCircle, className: '' },
+      approved: { variant: 'default' as const, label: 'Approved', icon: CheckCircle, className: 'bg-green-600 hover:bg-green-700 text-white' },
+      rejected: { variant: 'destructive' as const, label: 'Rejected', icon: XCircle, className: '' },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;

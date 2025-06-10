@@ -360,11 +360,11 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
             <>
               <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700">
                 <CheckCircle className="w-4 h-4 mr-2" />
-                ✅ Approve & Sign Off
+                Approve & Sign Off
               </Button>
               <Button onClick={handleReject} variant="destructive">
                 <XCircle className="w-4 h-4 mr-2" />
-                ❌ Reject
+                Reject
               </Button>
             </>
           )}
@@ -478,7 +478,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       onCheckedChange={(checked) => setFormData({ ...formData, productionConfirmed: checked as boolean })}
                     />
                     <Label htmlFor="productionConfirm" className="text-sm font-medium">
-                      ✅ Confirm production entry and sign off (Date, time and user details will be recorded automatically)
+                      ✅ I Confirm production entry and sign off (Date, time and user details will be recorded automatically)
                     </Label>
                   </div>
                 </>
@@ -608,7 +608,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       onCheckedChange={(checked) => setFormData({ ...formData, storesConfirmed: checked as boolean })}
                     />
                     <Label htmlFor="storesConfirm" className="text-sm font-medium">
-                      ✅ Confirm stores entry and sign off (Date, time and user details will be recorded automatically)
+                      ✅ I Confirm stores entry and sign off (Date, time and user details will be recorded automatically)
                     </Label>
                   </div>
                 </>
