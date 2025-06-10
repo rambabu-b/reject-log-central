@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Save, CheckCircle, XCircle, RotateCcw, AlertTriangle, Clock, FileText, User } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, XCircle, AlertTriangle, Clock, FileText, User } from 'lucide-react';
 import { LogEntry, AuditLog } from '@/types';
 import { useAuth, getStaticUsers } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +34,6 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     qaRemarks: entry.qaRemarks || '',
     hasVariations: entry.hasVariations || false,
     variationDetails: entry.variationDetails || '',
-    reopenReason: '',
   });
   const { user } = useAuth();
   const { toast } = useToast();
@@ -56,11 +56,6 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     }
     
     return false;
-  };
-
-  const canReopen = () => {
-    return (user?.role === 'hod' || user?.role === 'admin') && 
-           (entry.status === 'approved' || entry.status === 'rejected');
   };
 
   const canApprove = () => {
@@ -265,53 +260,21 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     });
   };
 
-  const handleReopen = () => {
-    if (!formData.reopenReason.trim()) {
-      toast({
-        title: "Error",
-        description: "Please provide a reason for reopening",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const updatedEntry = {
-      ...entry,
-      status: 'reopened' as const,
-      reopenedBy: user?.name,
-      reopenedAt: new Date().toISOString(),
-      reopenReason: formData.reopenReason,
-      lastModifiedBy: user?.name,
-      lastModifiedAt: new Date().toISOString(),
-    };
-
-    // Save audit log
-    const auditLog = createAuditLog('REOPEN', `Entry reopened by ${user?.role.toUpperCase()}. Reason: ${formData.reopenReason}`, entry.status, 'reopened');
-    saveAuditLog(auditLog);
-
-    onUpdate(updatedEntry);
-    toast({
-      title: "🔄 Entry Reopened",
-      description: "Entry has been reopened for modifications",
-    });
-  };
-
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       draft: { variant: 'secondary' as const, label: 'Draft', icon: FileText },
       production_pending: { variant: 'destructive' as const, label: 'Production Pending', icon: Clock },
       stores_pending: { variant: 'destructive' as const, label: 'Stores Pending', icon: Clock },
       qa_pending: { variant: 'destructive' as const, label: 'QA Review Pending', icon: Clock },
-      approved: { variant: 'default' as const, label: '✅ Approved', icon: CheckCircle },
+      approved: { variant: 'default' as const, label: '✅ Approved', icon: CheckCircle, className: 'bg-green-600 hover:bg-green-700' },
       rejected: { variant: 'destructive' as const, label: '❌ Rejected', icon: XCircle },
-      reopened: { variant: 'secondary' as const, label: '🔄 Reopened', icon: RotateCcw },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
     const Icon = config.icon;
     
     return (
-      <Badge variant={config.variant} className="flex items-center gap-1 text-sm px-3 py-1">
+      <Badge variant={config.variant} className={`flex items-center gap-1 text-sm px-3 py-1 ${config.className || ''}`}>
         <Icon className="w-4 h-4" />
         {config.label}
       </Badge>
@@ -347,6 +310,12 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     );
   };
 
+  const getAssignedUserName = (userId: string | undefined, teamType: string) => {
+    if (!userId) return `No ${teamType} assigned`;
+    const assignedUser = staticUsers.find(u => u.id === userId);
+    return assignedUser ? `${assignedUser.name} (${teamType.toUpperCase()})` : `${teamType.toUpperCase()} Team`;
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -357,7 +326,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
           <CardTitle>Rejection Log Entry Details</CardTitle>
           {getStatusBadge(entry.status)}
           {entry.hasVariations && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 bg-yellow-100 text-yellow-800 border-yellow-300">
               <AlertTriangle className="w-3 h-3" />
               Variations Noted
             </Badge>
@@ -381,12 +350,6 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
               </Button>
             </>
           )}
-          {canReopen() && (
-            <Button onClick={() => setEditMode(true)} variant="outline">
-              <RotateCcw className="w-4 h-4 mr-2" />
-              🔄 Reopen
-            </Button>
-          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -396,24 +359,24 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
         {/* Basic Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label>Date</Label>
-            <div className="text-sm font-medium">{new Date(entry.date).toLocaleDateString()}</div>
+            <Label className="text-sm font-medium text-gray-600">Date</Label>
+            <div className="text-sm font-medium mt-1">{new Date(entry.date).toLocaleDateString()}</div>
           </div>
           <div>
-            <Label>Product</Label>
-            <div className="text-sm font-medium">{entry.productName}</div>
+            <Label className="text-sm font-medium text-gray-600">Product</Label>
+            <div className="text-sm font-medium mt-1">{entry.productName}</div>
           </div>
           <div>
-            <Label>Batch No</Label>
-            <div className="text-sm font-medium">{entry.batchNo}</div>
+            <Label className="text-sm font-medium text-gray-600">Batch No</Label>
+            <div className="text-sm font-medium mt-1">{entry.batchNo}</div>
           </div>
           <div>
-            <Label>Line No</Label>
-            <div className="text-sm font-medium">{entry.lineNo}</div>
+            <Label className="text-sm font-medium text-gray-600">Line No</Label>
+            <div className="text-sm font-medium mt-1">{entry.lineNo}</div>
           </div>
           <div>
-            <Label>Created By</Label>
-            <div className="text-sm font-medium flex items-center gap-2">
+            <Label className="text-sm font-medium text-gray-600">Created By</Label>
+            <div className="text-sm font-medium flex items-center gap-2 mt-1">
               <User className="w-4 h-4" />
               {staticUsers.find(u => u.id === entry.createdBy)?.name || 'Unknown'}
               <Badge variant="outline" className="text-xs">
@@ -422,97 +385,112 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
             </div>
           </div>
           <div>
-            <Label>Created At</Label>
-            <div className="text-sm font-medium">{new Date(entry.createdAt || entry.date).toLocaleString()}</div>
+            <Label className="text-sm font-medium text-gray-600">Created At</Label>
+            <div className="text-sm font-medium mt-1">{new Date(entry.createdAt || entry.date).toLocaleString()}</div>
+          </div>
+          <div>
+            <Label className="text-sm font-medium text-gray-600">Assigned Production User</Label>
+            <div className="text-sm font-medium mt-1">{getAssignedUserName(entry.assignedProductionUser, 'production')}</div>
+          </div>
+          <div>
+            <Label className="text-sm font-medium text-gray-600">Assigned Stores User</Label>
+            <div className="text-sm font-medium mt-1">{getAssignedUserName(entry.assignedStoresUser, 'stores')}</div>
           </div>
         </div>
 
         <Separator />
 
-        {/* Production Section */}
-        <div>
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            🏭 Production Details
-            {entry.productionConfirmed && <CheckCircle className="w-5 h-5 text-green-600" />}
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Production Section - Only show if production has started or is pending */}
+        {(entry.status !== 'draft') && (
+          <>
             <div>
-              <Label htmlFor="polyBagNo">Poly Bag No *</Label>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                🏭 Production Details
+                {entry.productionConfirmed && <CheckCircle className="w-5 h-5 text-green-600" />}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="polyBagNo" className="text-sm font-medium text-gray-600">Poly Bag No *</Label>
+                  {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
+                    <Input
+                      id="polyBagNo"
+                      value={formData.polyBagNo}
+                      onChange={(e) => setFormData({ ...formData, polyBagNo: e.target.value })}
+                      required
+                      className="mt-1"
+                    />
+                  ) : (
+                    <div className="text-sm font-medium mt-1">{entry.polyBagNo || 'Not entered'}</div>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="grossWeight" className="text-sm font-medium text-gray-600">Gross Weight (kg) *</Label>
+                  {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
+                    <Input
+                      id="grossWeight"
+                      type="number"
+                      step="0.01"
+                      value={formData.grossWeight}
+                      onChange={(e) => setFormData({ ...formData, grossWeight: e.target.value })}
+                      required
+                      className="mt-1"
+                    />
+                  ) : (
+                    <div className="text-sm font-medium mt-1">{entry.grossWeight || 'Not entered'}</div>
+                  )}
+                </div>
+              </div>
+              
               {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
-                <Input
-                  id="polyBagNo"
-                  value={formData.polyBagNo}
-                  onChange={(e) => setFormData({ ...formData, polyBagNo: e.target.value })}
-                  required
-                />
+                <>
+                  <div className="mt-4">
+                    <Label htmlFor="productionRemarks" className="text-sm font-medium text-gray-600">Production Remarks</Label>
+                    <Textarea
+                      id="productionRemarks"
+                      value={formData.productionRemarks}
+                      onChange={(e) => setFormData({ ...formData, productionRemarks: e.target.value })}
+                      placeholder="Enter any production-related remarks"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <Checkbox
+                      id="productionConfirm"
+                      checked={formData.productionConfirmed}
+                      onCheckedChange={(checked) => setFormData({ ...formData, productionConfirmed: checked as boolean })}
+                    />
+                    <Label htmlFor="productionConfirm" className="text-sm font-medium">
+                      ✅ Confirm and sign off production entry (Date and time will be recorded)
+                    </Label>
+                  </div>
+                </>
               ) : (
-                <div className="text-sm font-medium">{entry.polyBagNo || 'Not entered'}</div>
+                <>
+                  {entry.productionRemarks && (
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium text-gray-600">Production Remarks</Label>
+                      <div className="text-sm mt-1">{entry.productionRemarks}</div>
+                    </div>
+                  )}
+                  {entry.productionTimestamp && (
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Production Confirmed At</Label>
+                        <div className="text-sm mt-1">{new Date(entry.productionTimestamp).toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Production User</Label>
+                        <div className="text-sm mt-1">{entry.productionUser || 'Unknown'}</div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
-            <div>
-              <Label htmlFor="grossWeight">Gross Weight (kg) *</Label>
-              {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
-                <Input
-                  id="grossWeight"
-                  type="number"
-                  step="0.01"
-                  value={formData.grossWeight}
-                  onChange={(e) => setFormData({ ...formData, grossWeight: e.target.value })}
-                  required
-                />
-              ) : (
-                <div className="text-sm font-medium">{entry.grossWeight || 'Not entered'}</div>
-              )}
-            </div>
-          </div>
-          
-          {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
-            <>
-              <div className="mt-4">
-                <Label htmlFor="productionRemarks">Production Remarks</Label>
-                <Textarea
-                  id="productionRemarks"
-                  value={formData.productionRemarks}
-                  onChange={(e) => setFormData({ ...formData, productionRemarks: e.target.value })}
-                  placeholder="Enter any production-related remarks"
-                />
-              </div>
-              <div className="flex items-center space-x-2 mt-4">
-                <Checkbox
-                  id="productionConfirm"
-                  checked={formData.productionConfirmed}
-                  onCheckedChange={(checked) => setFormData({ ...formData, productionConfirmed: checked as boolean })}
-                />
-                <Label htmlFor="productionConfirm">
-                  ✅ Confirm production entry (Date and time will be recorded)
-                </Label>
-              </div>
-            </>
-          ) : (
-            <>
-              {entry.productionRemarks && (
-                <div className="mt-4">
-                  <Label>Production Remarks</Label>
-                  <div className="text-sm">{entry.productionRemarks}</div>
-                </div>
-              )}
-              {entry.productionTimestamp && (
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Production Confirmed At</Label>
-                    <div className="text-sm">{new Date(entry.productionTimestamp).toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <Label>Production User</Label>
-                    <div className="text-sm">{entry.productionUser || 'Unknown'}</div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+          </>
+        )}
 
-        {/* Stores Section */}
+        {/* Stores Section - Only show if stores workflow has started */}
         {(entry.status === 'stores_pending' || entry.status === 'qa_pending' || entry.status === 'approved' || entry.status === 'rejected') && (
           <>
             <Separator />
@@ -523,7 +501,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="grossWeightObserved">Gross Weight Observed (kg) *</Label>
+                  <Label htmlFor="grossWeightObserved" className="text-sm font-medium text-gray-600">Gross Weight Observed (kg) *</Label>
                   {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
                     <Input
                       id="grossWeightObserved"
@@ -532,13 +510,14 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       value={formData.grossWeightObserved}
                       onChange={(e) => setFormData({ ...formData, grossWeightObserved: e.target.value })}
                       required
+                      className="mt-1"
                     />
                   ) : (
-                    <div className="text-sm font-medium">{entry.grossWeightObserved || 'Not entered'}</div>
+                    <div className="text-sm font-medium mt-1">{entry.grossWeightObserved || 'Not entered'}</div>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="destructionDoneBy">Destruction Done By *</Label>
+                  <Label htmlFor="destructionDoneBy" className="text-sm font-medium text-gray-600">Destruction Done By *</Label>
                   {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
                     <Input
                       id="destructionDoneBy"
@@ -546,13 +525,14 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       onChange={(e) => setFormData({ ...formData, destructionDoneBy: e.target.value })}
                       placeholder="Enter name of person who performed destruction"
                       required
+                      className="mt-1"
                     />
                   ) : (
-                    <div className="text-sm font-medium">{entry.destructionDoneBy || 'Not entered'}</div>
+                    <div className="text-sm font-medium mt-1">{entry.destructionDoneBy || 'Not entered'}</div>
                   )}
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="destructionVerifiedBy">Destruction Verified By *</Label>
+                  <Label htmlFor="destructionVerifiedBy" className="text-sm font-medium text-gray-600">Destruction Verified By *</Label>
                   {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
                     <Input
                       id="destructionVerifiedBy"
@@ -560,9 +540,10 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       onChange={(e) => setFormData({ ...formData, destructionVerifiedBy: e.target.value })}
                       placeholder="Enter name of person who verified destruction"
                       required
+                      className="mt-1"
                     />
                   ) : (
-                    <div className="text-sm font-medium">{entry.destructionVerifiedBy || 'Not entered'}</div>
+                    <div className="text-sm font-medium mt-1">{entry.destructionVerifiedBy || 'Not entered'}</div>
                   )}
                 </div>
               </div>
@@ -570,12 +551,13 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
               {editMode && (user?.role === 'stores' || user?.role === 'hod') && entry.status === 'stores_pending' ? (
                 <>
                   <div className="mt-4">
-                    <Label htmlFor="storesRemarks">Stores Remarks</Label>
+                    <Label htmlFor="storesRemarks" className="text-sm font-medium text-gray-600">Stores Remarks</Label>
                     <Textarea
                       id="storesRemarks"
                       value={formData.storesRemarks}
                       onChange={(e) => setFormData({ ...formData, storesRemarks: e.target.value })}
                       placeholder="Enter any stores-related remarks"
+                      className="mt-1"
                     />
                   </div>
                   <div className="flex items-center space-x-2 mt-4">
@@ -584,30 +566,31 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       checked={formData.hasVariations}
                       onCheckedChange={(checked) => setFormData({ ...formData, hasVariations: checked as boolean })}
                     />
-                    <Label htmlFor="hasVariations">
+                    <Label htmlFor="hasVariations" className="text-sm font-medium">
                       ⚠️ Variations identified that require QA approval
                     </Label>
                   </div>
                   {formData.hasVariations && (
                     <div className="mt-4">
-                      <Label htmlFor="variationDetails">Variation Details *</Label>
+                      <Label htmlFor="variationDetails" className="text-sm font-medium text-gray-600">Variation Details *</Label>
                       <Textarea
                         id="variationDetails"
                         value={formData.variationDetails}
                         onChange={(e) => setFormData({ ...formData, variationDetails: e.target.value })}
                         placeholder="Describe the variations identified"
                         required
+                        className="mt-1"
                       />
                     </div>
                   )}
-                  <div className="flex items-center space-x-2 mt-4">
+                  <div className="flex items-center space-x-2 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <Checkbox
                       id="storesConfirm"
                       checked={formData.storesConfirmed}
                       onCheckedChange={(checked) => setFormData({ ...formData, storesConfirmed: checked as boolean })}
                     />
-                    <Label htmlFor="storesConfirm">
-                      ✅ Confirm stores entry (Date and time will be recorded)
+                    <Label htmlFor="storesConfirm" className="text-sm font-medium">
+                      ✅ Confirm and sign off stores entry (Date and time will be recorded)
                     </Label>
                   </div>
                 </>
@@ -615,22 +598,22 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                 <>
                   {entry.storesRemarks && (
                     <div className="mt-4">
-                      <Label>Stores Remarks</Label>
-                      <div className="text-sm">{entry.storesRemarks}</div>
+                      <Label className="text-sm font-medium text-gray-600">Stores Remarks</Label>
+                      <div className="text-sm mt-1">{entry.storesRemarks}</div>
                     </div>
                   )}
                   {entry.hasVariations && entry.variationDetails && (
                     <div className="mt-4">
-                      <Label>⚠️ Variation Details</Label>
-                      <div className="text-sm p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <Label className="text-sm font-medium text-gray-600">⚠️ Variation Details</Label>
+                      <div className="text-sm p-3 bg-yellow-50 border border-yellow-200 rounded-md mt-1">
                         {entry.variationDetails}
                       </div>
                     </div>
                   )}
                   {entry.recordedTimestamp && (
                     <div className="mt-4">
-                      <Label>Stores Confirmed At</Label>
-                      <div className="text-sm">{new Date(entry.recordedTimestamp).toLocaleString()} by {entry.recordedBy}</div>
+                      <Label className="text-sm font-medium text-gray-600">Stores Confirmed At</Label>
+                      <div className="text-sm mt-1">{new Date(entry.recordedTimestamp).toLocaleString()} by {entry.recordedBy}</div>
                     </div>
                   )}
                 </>
@@ -639,7 +622,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
           </>
         )}
 
-        {/* QA Section */}
+        {/* QA Section - Only show if QA workflow has started */}
         {(entry.status === 'qa_pending' || entry.status === 'approved' || entry.status === 'rejected') && (
           <>
             <Separator />
@@ -651,7 +634,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
               
               {editMode && (user?.role === 'qa' || user?.role === 'hod') && entry.status === 'qa_pending' ? (
                 <div>
-                  <Label htmlFor="qaRemarks">QA Remarks *</Label>
+                  <Label htmlFor="qaRemarks" className="text-sm font-medium text-gray-600">QA Remarks *</Label>
                   <Textarea
                     id="qaRemarks"
                     value={formData.qaRemarks}
@@ -667,48 +650,24 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                 <>
                   {entry.qaRemarks && (
                     <div>
-                      <Label>QA Remarks</Label>
-                      <div className="text-sm p-3 bg-blue-50 border border-blue-200 rounded-md">{entry.qaRemarks}</div>
+                      <Label className="text-sm font-medium text-gray-600">QA Remarks</Label>
+                      <div className="text-sm p-3 bg-blue-50 border border-blue-200 rounded-md mt-1">{entry.qaRemarks}</div>
                     </div>
                   )}
                   {entry.qaTimestamp && (
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label>QA Action Taken At</Label>
-                        <div className="text-sm">{new Date(entry.qaTimestamp).toLocaleString()}</div>
+                        <Label className="text-sm font-medium text-gray-600">QA Action Taken At</Label>
+                        <div className="text-sm mt-1">{new Date(entry.qaTimestamp).toLocaleString()}</div>
                       </div>
                       <div>
-                        <Label>QA User</Label>
-                        <div className="text-sm">{entry.qaUser || 'Unknown'}</div>
+                        <Label className="text-sm font-medium text-gray-600">QA User</Label>
+                        <div className="text-sm mt-1">{entry.qaUser || 'Unknown'}</div>
                       </div>
                     </div>
                   )}
                 </>
               )}
-            </div>
-          </>
-        )}
-
-        {/* Reopen Section for HOD/Admin */}
-        {canReopen() && editMode && (
-          <>
-            <Separator />
-            <div>
-              <h3 className="text-lg font-semibold mb-4">🔄 Reopen Entry</h3>
-              <div>
-                <Label htmlFor="reopenReason">Reason for Reopening *</Label>
-                <Textarea
-                  id="reopenReason"
-                  value={formData.reopenReason}
-                  onChange={(e) => setFormData({ ...formData, reopenReason: e.target.value })}
-                  placeholder="Provide a detailed reason for reopening this entry"
-                  required
-                />
-              </div>
-              <Button onClick={handleReopen} className="mt-4" variant="outline">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                🔄 Reopen Entry
-              </Button>
             </div>
           </>
         )}
@@ -721,31 +680,13 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
               <h3 className="text-lg font-semibold mb-4">📋 Audit Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <Label>Last Modified By</Label>
-                  <div>{entry.lastModifiedBy}</div>
+                  <Label className="text-sm font-medium text-gray-600">Last Modified By</Label>
+                  <div className="mt-1">{entry.lastModifiedBy}</div>
                 </div>
                 <div>
-                  <Label>Last Modified At</Label>
-                  <div>{entry.lastModifiedAt ? new Date(entry.lastModifiedAt).toLocaleString() : 'N/A'}</div>
+                  <Label className="text-sm font-medium text-gray-600">Last Modified At</Label>
+                  <div className="mt-1">{entry.lastModifiedAt ? new Date(entry.lastModifiedAt).toLocaleString() : 'N/A'}</div>
                 </div>
-                {entry.reopenedBy && (
-                  <>
-                    <div>
-                      <Label>Reopened By</Label>
-                      <div>{entry.reopenedBy}</div>
-                    </div>
-                    <div>
-                      <Label>Reopened At</Label>
-                      <div>{entry.reopenedAt ? new Date(entry.reopenedAt).toLocaleString() : 'N/A'}</div>
-                    </div>
-                    {entry.reopenReason && (
-                      <div className="md:col-span-2">
-                        <Label>Reopen Reason</Label>
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">{entry.reopenReason}</div>
-                      </div>
-                    )}
-                  </>
-                )}
               </div>
             </div>
           </>

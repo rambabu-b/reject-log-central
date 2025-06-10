@@ -286,7 +286,7 @@ const LogEntryManagement = () => {
                 <TabsTrigger value="approved" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                   <span className="hidden sm:inline">Approved</span>
                   <span className="sm:hidden">✓</span>
-                  <Badge variant="default" className="text-xs">{counts.approved}</Badge>
+                  <Badge className="text-xs bg-green-600 hover:bg-green-700">{counts.approved}</Badge>
                 </TabsTrigger>
                 <TabsTrigger value="rejected" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                   <span className="hidden sm:inline">Rejected</span>
@@ -296,7 +296,7 @@ const LogEntryManagement = () => {
                 <TabsTrigger value="variations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                   <span className="hidden sm:inline">Variations</span>
                   <span className="sm:hidden">⚠️</span>
-                  <Badge variant="outline" className="text-xs">{counts.variations}</Badge>
+                  <Badge className="text-xs bg-yellow-600 text-white">{counts.variations}</Badge>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -318,7 +318,7 @@ const LogEntryManagement = () => {
                     {user?.role === 'production' && 'Complete production data entry for assigned rejection logs.'}
                     {user?.role === 'stores' && 'Record destruction details and identify any variations.'}
                     {user?.role === 'qa' && 'Review and provide final sign-off for completed rejection logs.'}
-                    {(user?.role === 'hod' || user?.role === 'admin') && 'Oversee all rejection log activities and reopen entries as needed.'}
+                    {(user?.role === 'hod' || user?.role === 'admin') && 'Oversee all rejection log activities.'}
                   </p>
                 </div>
                 <LogEntryList
