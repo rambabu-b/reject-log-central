@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,39 +51,38 @@ const CreateLogEntry = ({ onCancel, onCreate }: CreateLogEntryProps) => {
             onLineNoChange={(lineNo) => updateFormData({ lineNo })}
           />
 
-            <UserAssignmentSection
-              assignedProductionUser={formData.assignedProductionUser}
-              assignedStoresUser={formData.assignedStoresUser}
-              onProductionUserChange={(assignedProductionUser) => updateFormData({ assignedProductionUser })}
-              onStoresUserChange={(assignedStoresUser) => updateFormData({ assignedStoresUser })}
+          <UserAssignmentSection
+            assignedProductionUser={formData.assignedProductionUser}
+            assignedStoresUser={formData.assignedStoresUser}
+            onProductionUserChange={(assignedProductionUser) => updateFormData({ assignedProductionUser })}
+            onStoresUserChange={(assignedStoresUser) => updateFormData({ assignedStoresUser })}
+          />
+
+          {user?.role === 'production' && (
+            <ProductionFieldsSection
+              polyBagNo={formData.polyBagNo}
+              grossWeight={formData.grossWeight}
+              productionRemarks={formData.productionRemarks}
+              productionConfirmed={formData.productionConfirmed}
+              onPolyBagNoChange={(polyBagNo) => updateFormData({ polyBagNo })}
+              onGrossWeightChange={(grossWeight) => updateFormData({ grossWeight })}
+              onProductionRemarksChange={(productionRemarks) => updateFormData({ productionRemarks })}
+              onProductionConfirmedChange={(productionConfirmed) => updateFormData({ productionConfirmed })}
             />
+          )}
 
-            {user?.role === 'production' && (
-              <ProductionFieldsSection
-                polyBagNo={formData.polyBagNo}
-                grossWeight={formData.grossWeight}
-                productionRemarks={formData.productionRemarks}
-                productionConfirmed={formData.productionConfirmed}
-                onPolyBagNoChange={(polyBagNo) => updateFormData({ polyBagNo })}
-                onGrossWeightChange={(grossWeight) => updateFormData({ grossWeight })}
-                onProductionRemarksChange={(productionRemarks) => updateFormData({ productionRemarks })}
-                onProductionConfirmedChange={(productionConfirmed) => updateFormData({ productionConfirmed })}
-              />
-            )}
-
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 pt-4 border-t">
-              <Button type="submit" className="w-full sm:w-auto">
-                <Save className="w-4 h-4 mr-2" />
-                Create Entry
-              </Button>
-              <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 pt-4 border-t">
+            <Button type="submit" className="w-full sm:w-auto">
+              <Save className="w-4 h-4 mr-2" />
+              Create Entry
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 
