@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +26,13 @@ const LogEntryList = ({ entries, onSelectEntry }: LogEntryListProps) => {
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
     const Icon = config.icon;
     
+    // Handle special styling for approved status
+    const badgeClassName = status === 'approved' 
+      ? 'flex items-center gap-1 text-xs bg-green-600 hover:bg-green-700 text-white border-green-600'
+      : 'flex items-center gap-1 text-xs';
+    
     return (
-      <Badge variant={config.variant} className={`flex items-center gap-1 text-xs ${config.className}`}>
+      <Badge variant={config.variant} className={badgeClassName}>
         <Icon className="w-3 h-3" />
         {config.label}
       </Badge>
@@ -36,9 +40,9 @@ const LogEntryList = ({ entries, onSelectEntry }: LogEntryListProps) => {
   };
 
   const getAssignedUserName = (userId: string | undefined, teamType: string) => {
-    if (!userId) return null;
+    if (!userId) return `${teamType.charAt(0).toUpperCase() + teamType.slice(1)} Team`;
     const assignedUser = staticUsers.find(u => u.id === userId);
-    return assignedUser ? `${assignedUser.name}` : `${teamType.toUpperCase()} Team`;
+    return assignedUser ? assignedUser.name : `${teamType.charAt(0).toUpperCase() + teamType.slice(1)} Team`;
   };
 
   const formatDate = (dateString: string) => {
@@ -101,13 +105,13 @@ const LogEntryList = ({ entries, onSelectEntry }: LogEntryListProps) => {
                 
                 {/* Assignment Info */}
                 <div className="mt-2 flex flex-col sm:flex-row gap-2 text-xs">
-                  {entry.assignedProductionUser && (
+                  {(entry.assignedProductionUser || entry.status !== 'draft') && (
                     <div className="flex items-center gap-1 text-blue-600">
                       <User className="w-3 h-3" />
                       <span className="font-medium">Production:</span> {getAssignedUserName(entry.assignedProductionUser, 'production')}
                     </div>
                   )}
-                  {entry.assignedStoresUser && (
+                  {(entry.assignedStoresUser || entry.status === 'stores_pending' || entry.status === 'qa_pending' || entry.status === 'approved' || entry.status === 'rejected') && (
                     <div className="flex items-center gap-1 text-purple-600">
                       <User className="w-3 h-3" />
                       <span className="font-medium">Stores:</span> {getAssignedUserName(entry.assignedStoresUser, 'stores')}

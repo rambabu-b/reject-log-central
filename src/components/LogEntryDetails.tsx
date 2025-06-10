@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -266,15 +265,20 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
       production_pending: { variant: 'destructive' as const, label: 'Production Pending', icon: Clock },
       stores_pending: { variant: 'destructive' as const, label: 'Stores Pending', icon: Clock },
       qa_pending: { variant: 'destructive' as const, label: 'QA Review Pending', icon: Clock },
-      approved: { variant: 'default' as const, label: '✅ Approved', icon: CheckCircle, className: 'bg-green-600 hover:bg-green-700' },
+      approved: { variant: 'default' as const, label: '✅ Approved', icon: CheckCircle },
       rejected: { variant: 'destructive' as const, label: '❌ Rejected', icon: XCircle },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
     const Icon = config.icon;
     
+    // Handle special styling for approved status
+    const badgeClassName = status === 'approved' 
+      ? 'flex items-center gap-1 text-sm px-3 py-1 bg-green-600 hover:bg-green-700 text-white'
+      : 'flex items-center gap-1 text-sm px-3 py-1';
+    
     return (
-      <Badge variant={config.variant} className={`flex items-center gap-1 text-sm px-3 py-1 ${config.className || ''}`}>
+      <Badge variant={config.variant} className={badgeClassName}>
         <Icon className="w-4 h-4" />
         {config.label}
       </Badge>
@@ -311,9 +315,9 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
   };
 
   const getAssignedUserName = (userId: string | undefined, teamType: string) => {
-    if (!userId) return `No ${teamType} assigned`;
+    if (!userId) return `${teamType.charAt(0).toUpperCase() + teamType.slice(1)} Team`;
     const assignedUser = staticUsers.find(u => u.id === userId);
-    return assignedUser ? `${assignedUser.name} (${teamType.toUpperCase()})` : `${teamType.toUpperCase()} Team`;
+    return assignedUser ? assignedUser.name : `${teamType.charAt(0).toUpperCase() + teamType.slice(1)} Team`;
   };
 
   return (
@@ -411,7 +415,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="polyBagNo" className="text-sm font-medium text-gray-600">Poly Bag No *</Label>
-                  {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
+                  {editMode && (user?.role === 'production' || user?.role === 'hod') && entry.status === 'production_pending' ? (
                     <Input
                       id="polyBagNo"
                       value={formData.polyBagNo}
@@ -425,7 +429,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                 </div>
                 <div>
                   <Label htmlFor="grossWeight" className="text-sm font-medium text-gray-600">Gross Weight (kg) *</Label>
-                  {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
+                  {editMode && (user?.role === 'production' || user?.role === 'hod') && entry.status === 'production_pending' ? (
                     <Input
                       id="grossWeight"
                       type="number"
@@ -441,7 +445,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                 </div>
               </div>
               
-              {editMode && (user?.role === 'production' || user?.role === 'hod') ? (
+              {editMode && (user?.role === 'production' || user?.role === 'hod') && entry.status === 'production_pending' ? (
                 <>
                   <div className="mt-4">
                     <Label htmlFor="productionRemarks" className="text-sm font-medium text-gray-600">Production Remarks</Label>
@@ -460,7 +464,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       onCheckedChange={(checked) => setFormData({ ...formData, productionConfirmed: checked as boolean })}
                     />
                     <Label htmlFor="productionConfirm" className="text-sm font-medium">
-                      ✅ Confirm and sign off production entry (Date and time will be recorded)
+                      ✅ Confirm production entry and sign off (Date and time will be recorded automatically)
                     </Label>
                   </div>
                 </>
@@ -475,12 +479,12 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                   {entry.productionTimestamp && (
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-sm font-medium text-gray-600">Production Confirmed At</Label>
+                        <Label className="text-sm font-medium text-gray-600">Production Signed Off At</Label>
                         <div className="text-sm mt-1">{new Date(entry.productionTimestamp).toLocaleString()}</div>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-600">Production User</Label>
-                        <div className="text-sm mt-1">{entry.productionUser || 'Unknown'}</div>
+                        <Label className="text-sm font-medium text-gray-600">Production Signed Off By</Label>
+                        <div className="text-sm mt-1">{entry.productionUser || getAssignedUserName(entry.assignedProductionUser, 'production')}</div>
                       </div>
                     </div>
                   )}
@@ -590,7 +594,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                       onCheckedChange={(checked) => setFormData({ ...formData, storesConfirmed: checked as boolean })}
                     />
                     <Label htmlFor="storesConfirm" className="text-sm font-medium">
-                      ✅ Confirm and sign off stores entry (Date and time will be recorded)
+                      ✅ Confirm stores entry and sign off (Date and time will be recorded automatically)
                     </Label>
                   </div>
                 </>
@@ -611,9 +615,15 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                     </div>
                   )}
                   {entry.recordedTimestamp && (
-                    <div className="mt-4">
-                      <Label className="text-sm font-medium text-gray-600">Stores Confirmed At</Label>
-                      <div className="text-sm mt-1">{new Date(entry.recordedTimestamp).toLocaleString()} by {entry.recordedBy}</div>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Stores Signed Off At</Label>
+                        <div className="text-sm mt-1">{new Date(entry.recordedTimestamp).toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Stores Signed Off By</Label>
+                        <div className="text-sm mt-1">{entry.recordedBy || getAssignedUserName(entry.assignedStoresUser, 'stores')}</div>
+                      </div>
                     </div>
                   )}
                 </>
@@ -661,8 +671,8 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                         <div className="text-sm mt-1">{new Date(entry.qaTimestamp).toLocaleString()}</div>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-600">QA User</Label>
-                        <div className="text-sm mt-1">{entry.qaUser || 'Unknown'}</div>
+                        <Label className="text-sm font-medium text-gray-600">QA Action By</Label>
+                        <div className="text-sm mt-1">{entry.qaUser || 'QA Team'}</div>
                       </div>
                     </div>
                   )}
