@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 const ProductManagement = () => {
-  const { user } = useAuth(); // Add this line
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -246,21 +247,14 @@ const ProductManagement = () => {
             className="mb-4 w-full max-w-xs"
           />
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product Name</TableHead>
-                <TableHead>Batch No</TableHead>
-                <TableHead>Line No</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    {editingId === product.id ? (
+          {/* Mobile Card View */}
+          <div className="sm:hidden space-y-4">
+            {paginatedProducts.map((product) => (
+              <div key={product.id} className="border rounded-lg p-4 space-y-3">
+                {editingId === product.id ? (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Product Name</Label>
                       <Input
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -333,7 +327,7 @@ const ProductManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => (
+                {paginatedProducts.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell>
                       {editingId === product.id ? (
@@ -345,12 +339,64 @@ const ProductManagement = () => {
                       ) : (
                         <div className="font-medium">{product.name}</div>
                       )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </TableCell>
+                    <TableCell>
+                      {editingId === product.id ? (
+                        <Input
+                          value={formData.batchNo}
+                          onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
+                          className="w-full"
+                        />
+                      ) : (
+                        product.batchNo
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingId === product.id ? (
+                        <Input
+                          value={formData.lineNo}
+                          onChange={(e) => setFormData({ ...formData, lineNo: e.target.value })}
+                          className="w-full"
+                        />
+                      ) : (
+                        product.lineNo
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {new Date(product.createdAt).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {editingId === product.id ? (
+                        <div className="flex space-x-2">
+                          <Button size="sm" onClick={handleUpdate}>
+                            <Save className="w-4 h-4 mr-2" />
+                            Save
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={cancelEdit}>
+                            <X className="w-4 h-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(product)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id)}>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
           <div className="flex justify-end items-center gap-2 mt-2">
             <Button disabled={page === 1} onClick={() => setPage(page - 1)} size="icon">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -256,7 +257,7 @@ const LogEntryManagement = () => {
             <Badge variant="outline" className="ml-2">
               {user?.role?.toUpperCase()}
             </Badge>
-          </div>
+          </CardTitle>
           {canCreateNewEntry() && (
             <Button onClick={() => setShowCreateForm(true)} size="sm" className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
