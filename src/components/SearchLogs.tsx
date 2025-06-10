@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Search } from 'lucide-react';
+import { Download, Search, X } from 'lucide-react';
 import { LogEntry, Product } from '@/types';
 import LogEntryList from './LogEntryList';
 import LogEntryDetails from './LogEntryDetails';
@@ -146,65 +145,71 @@ const SearchLogs = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
       <Card>
         <CardHeader>
-          <CardTitle>Search Log Entries</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Search Log Entries</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
+          {/* Search Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="productName">Product Name</Label>
               <Input
                 id="productName"
                 value={filters.productName}
                 onChange={(e) => setFilters({ ...filters, productName: e.target.value })}
                 placeholder="Search by product name"
+                className="w-full"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="batchNo">Batch No</Label>
               <Input
                 id="batchNo"
                 value={filters.batchNo}
                 onChange={(e) => setFilters({ ...filters, batchNo: e.target.value })}
                 placeholder="Search by batch number"
+                className="w-full"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="lineNo">Line No</Label>
               <Input
                 id="lineNo"
                 value={filters.lineNo}
                 onChange={(e) => setFilters({ ...filters, lineNo: e.target.value })}
                 placeholder="Search by line number"
+                className="w-full"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="dateFrom">Date From</Label>
               <Input
                 id="dateFrom"
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                className="w-full"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="dateTo">Date To</Label>
               <Input
                 id="dateTo"
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                className="w-full"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -213,21 +218,24 @@ const SearchLogs = () => {
                   <SelectItem value="production_pending">Production Pending</SelectItem>
                   <SelectItem value="stores_pending">Stores Pending</SelectItem>
                   <SelectItem value="qa_pending">QA Pending</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="flex space-x-4">
-            <Button onClick={handleSearch}>
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+            <Button onClick={handleSearch} className="w-full sm:w-auto">
               <Search className="w-4 h-4 mr-2" />
               Search
             </Button>
-            <Button variant="outline" onClick={clearFilters}>
+            <Button variant="outline" onClick={clearFilters} className="w-full sm:w-auto">
+              <X className="w-4 h-4 mr-2" />
               Clear Filters
             </Button>
-            <Button variant="outline" onClick={() => handleExport('csv')}>
+            <Button variant="outline" onClick={() => handleExport('csv')} className="w-full sm:w-auto">
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
@@ -237,9 +245,11 @@ const SearchLogs = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Search Results ({filteredEntries.length} entries)</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">
+            Search Results ({filteredEntries.length} entries)
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6">
           <LogEntryList
             entries={filteredEntries}
             onSelectEntry={setSelectedEntry}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -27,20 +26,24 @@ const ProductionFieldsSection = ({
   onProductionConfirmedChange,
 }: ProductionFieldsSectionProps) => {
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="polyBagNo">Poly Bag No</Label>
+    <div className="space-y-4">
+      <h3 className="text-lg font-medium">🏭 Production Details</h3>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="polyBagNo">Poly Bag No *</Label>
           <Input
             id="polyBagNo"
             value={polyBagNo}
             onChange={(e) => onPolyBagNoChange(e.target.value)}
             required
+            className="w-full"
+            placeholder="Enter poly bag number"
           />
         </div>
         
-        <div>
-          <Label htmlFor="grossWeight">Gross Weight (kg)</Label>
+        <div className="space-y-2">
+          <Label htmlFor="grossWeight">Gross Weight (kg) *</Label>
           <Input
             id="grossWeight"
             type="number"
@@ -48,30 +51,40 @@ const ProductionFieldsSection = ({
             value={grossWeight}
             onChange={(e) => onGrossWeightChange(e.target.value)}
             required
+            className="w-full"
+            placeholder="0.00"
           />
         </div>
       </div>
 
-      <div>
+      <div className="space-y-2">
         <Label htmlFor="productionRemarks">Remarks (if any)</Label>
         <Textarea
           id="productionRemarks"
           value={productionRemarks}
           onChange={(e) => onProductionRemarksChange(e.target.value)}
+          className="w-full min-h-[80px]"
+          placeholder="Enter any production-related remarks..."
         />
       </div>
 
-      <div className="flex items-center space-x-2">
+      <div className="flex items-start space-x-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <Checkbox
           id="confirm"
           checked={productionConfirmed}
           onCheckedChange={(checked) => onProductionConfirmedChange(checked as boolean)}
+          className="mt-1"
         />
-        <Label htmlFor="confirm">
-          Confirm entry (Date and time will be recorded)
-        </Label>
+        <div className="space-y-1">
+          <Label htmlFor="confirm" className="text-sm font-medium cursor-pointer">
+            ✅ Confirm production entry
+          </Label>
+          <p className="text-xs text-gray-600">
+            Date and time will be recorded when you confirm this entry
+          </p>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 
