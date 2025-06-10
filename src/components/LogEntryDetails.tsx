@@ -261,12 +261,12 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      draft: { variant: 'secondary' as const, label: 'Draft', icon: FileText },
-      production_pending: { variant: 'destructive' as const, label: 'Production Pending', icon: Clock },
-      stores_pending: { variant: 'destructive' as const, label: 'Stores Pending', icon: Clock },
-      qa_pending: { variant: 'destructive' as const, label: 'QA Review Pending', icon: Clock },
-      approved: { variant: 'default' as const, label: '✅ Approved', icon: CheckCircle },
-      rejected: { variant: 'destructive' as const, label: '❌ Rejected', icon: XCircle },
+      draft: { variant: 'secondary' as const, label: 'Draft', icon: FileText, className: '' },
+      production_pending: { variant: 'destructive' as const, label: 'Production Pending', icon: Clock, className: '' },
+      stores_pending: { variant: 'destructive' as const, label: 'Stores Pending', icon: Clock, className: '' },
+      qa_pending: { variant: 'destructive' as const, label: 'QA Review Pending', icon: Clock, className: '' },
+      approved: { variant: 'default' as const, label: '✅ Approved', icon: CheckCircle, className: 'bg-green-600 hover:bg-green-700 text-white border-green-600' },
+      rejected: { variant: 'destructive' as const, label: '❌ Rejected', icon: XCircle, className: '' },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
@@ -274,7 +274,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     
     // Handle special styling for approved status
     const badgeClassName = status === 'approved' 
-      ? 'flex items-center gap-1 text-sm px-3 py-1 bg-green-600 hover:bg-green-700 text-white'
+      ? `flex items-center gap-1 text-sm px-3 py-1 ${config.className}`
       : 'flex items-center gap-1 text-sm px-3 py-1';
     
     return (
