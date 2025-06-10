@@ -8,67 +8,84 @@ import { useAuth } from '@/contexts/AuthContext';
 interface BasicFieldsSectionProps {
   date: string;
   productId: string;
+  batchNo: string;
+  lineNo: string;
   products: Product[];
+  batchOptions: string[];
+  lineOptions: string[];
   onDateChange: (date: string) => void;
   onProductChange: (productId: string) => void;
+  onBatchNoChange: (batchNo: string) => void;
+  onLineNoChange: (lineNo: string) => void;
 }
 
 const BasicFieldsSection = ({
   date,
   productId,
+  batchNo,
+  lineNo,
   products,
+  batchOptions,
+  lineOptions,
   onDateChange,
   onProductChange,
+  onBatchNoChange,
+  onLineNoChange,
 }: BasicFieldsSectionProps) => {
   const { user } = useAuth();
 
-  const handleProductChange = (value: string) => {
-    console.log('Product selected:', value);
-    onProductChange(value);
-  };
-
-  console.log('Rendering BasicFieldsSection, products count:', products.length);
-
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Basic Information</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="date">Log Entry Date</Label>
-          <Input
-            id="date"
-            type="date"
-            value={date}
-            onChange={(e) => onDateChange(e.target.value)}
-            disabled={user?.role === 'production'}
-            className="w-full"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="product">Product ({products.length} available)</Label>
-          <Select value={productId} onValueChange={handleProductChange}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={products.length > 0 ? "Select product" : "No products available"} />
-            </SelectTrigger>
-            <SelectContent>
-              {products.length > 0 ? (
-                products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{product.name}</span>
-                      <span className="text-sm text-gray-500">{product.batchNo} - {product.lineNo}</span>
-                    </div>
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="no-products" disabled>
-                  No products available
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <Label htmlFor="date">Log Entry Date</Label>
+        <Input
+          id="date"
+          type="date"
+          value={date}
+          onChange={(e) => onDateChange(e.target.value)}
+          disabled={user?.role === 'production'}
+        />
+      </div>
+      <div>
+        <Label htmlFor="product">Product Name</Label>
+        <Select value={productId} onValueChange={onProductChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select product" />
+          </SelectTrigger>
+          <SelectContent>
+            {products.map((product) => (
+              <SelectItem key={product.id} value={product.id}>
+                {product.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="batchNo">Batch No.</Label>
+        <Select value={batchNo} onValueChange={onBatchNoChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select batch no." />
+          </SelectTrigger>
+          <SelectContent>
+            {batchOptions.map((b) => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="lineNo">Line No.</Label>
+        <Select value={lineNo} onValueChange={onLineNoChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select line no." />
+          </SelectTrigger>
+          <SelectContent>
+            {lineOptions.map((l) => (
+              <SelectItem key={l} value={l}>{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

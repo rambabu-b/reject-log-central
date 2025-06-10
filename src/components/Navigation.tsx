@@ -14,20 +14,22 @@ const Navigation = ({ activeTab, setActiveTab }: NavigationProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const getAvailableTabs = () => {
+    if (user?.role === 'admin') {
+      // Only show Products and Users for admin
+      return [
+        { id: 'products', label: 'Products', icon: Package },
+        { id: 'users', label: 'Users', icon: Users },
+      ];
+    }
+
     const baseTabs = [
       { id: 'logs', label: 'Log Entries', icon: FileText },
       { id: 'search', label: 'Search Logs', icon: Search },
     ];
 
-    if (user?.role === 'admin' || user?.role === 'hod') {
-      baseTabs.unshift({ id: 'products', label: 'Products', icon: Package });
+    if (user?.role === 'hod') {
       baseTabs.push({ id: 'audit', label: 'Audit Trail', icon: Clock });
     }
-
-    if (user?.role === 'admin') {
-      baseTabs.push({ id: 'users', label: 'Users', icon: Users });
-    }
-
     return baseTabs;
   };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect ,useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Navigation from './Navigation';
 import ProductManagement from './ProductManagement';
@@ -8,13 +8,30 @@ import UserManagement from './UserManagement';
 import AuditTrail from './AuditTrail';
 
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState('logs');
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<string | null>(null); // Start as null
+
+  // Set initial active tab based on user role
+  useEffect(() => {
+    if (user) {
+      setActiveTab(user.role === 'admin' ? 'products' : 'logs');
+    }
+  }, [user]);
 
   const renderContent = () => {
+    if (user?.role === 'admin') {
+      // Admin can only access Products and Users
+      switch (activeTab) {
+        case 'products':
+          return <ProductManagement />;
+        case 'users':
+          return <UserManagement />;
+        default:
+          return <ProductManagement />;
+      }
+    }
+    // Other roles: show all tabs
     switch (activeTab) {
-      case 'products':
-        return <ProductManagement />;
       case 'logs':
         return <LogEntryManagement />;
       case 'search':

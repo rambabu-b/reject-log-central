@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Product } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ProductManagement = () => {
+  const { user } = useAuth(); // Add this line
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -17,6 +19,9 @@ const ProductManagement = () => {
     batchNo: '',
     lineNo: ''
   });
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -145,6 +150,33 @@ const ProductManagement = () => {
     setFormData({ name: '', batchNo: '', lineNo: '' });
   };
 
+  const filteredProducts = useMemo(
+    () =>
+      products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          p.batchNo.toLowerCase().includes(search.toLowerCase()) ||
+          p.lineNo.toLowerCase().includes(search.toLowerCase())
+      ),
+    [products, search]
+  );
+
+  const paginatedProducts = useMemo(
+    () => filteredProducts.slice((page - 1) * pageSize, page * pageSize),
+    [filteredProducts, page]
+  );
+
+  const totalPages = Math.ceil(filteredProducts.length / pageSize);
+
+  // Only allow admin (super user) to access
+  if (user?.role !== 'admin') {
+    return (
+      <div className="p-8 text-center text-red-600 font-semibold">
+        Access Denied: Only Application Super Users can manage products.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
       <Card>
@@ -204,14 +236,31 @@ const ProductManagement = () => {
             </div>
           )}
 
-          {/* Mobile Card View */}
-          <div className="block sm:hidden space-y-3">
-            {products.map((product) => (
-              <div key={product.id} className="border rounded-lg p-4 space-y-3">
-                {editingId === product.id ? (
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label>Product Name</Label>
+          <Input
+            placeholder="Search products..."
+            value={search}
+            onChange={e => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="mb-4 w-full max-w-xs"
+          />
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product Name</TableHead>
+                <TableHead>Batch No</TableHead>
+                <TableHead>Line No</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedProducts.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>
+                    {editingId === product.id ? (
                       <Input
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -296,59 +345,23 @@ const ProductManagement = () => {
                       ) : (
                         <div className="font-medium">{product.name}</div>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === product.id ? (
-                        <Input
-                          value={formData.batchNo}
-                          onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
-                          className="w-full"
-                        />
-                      ) : (
-                        product.batchNo
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingId === product.id ? (
-                        <Input
-                          value={formData.lineNo}
-                          onChange={(e) => setFormData({ ...formData, lineNo: e.target.value })}
-                          className="w-full"
-                        />
-                      ) : (
-                        product.lineNo
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {new Date(product.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        {editingId === product.id ? (
-                          <>
-                            <Button size="sm\" onClick={handleUpdate}>
-                              <Save className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={cancelEdit}>
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => handleEdit(product)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <div className="flex justify-end items-center gap-2 mt-2">
+            <Button disabled={page === 1} onClick={() => setPage(page - 1)} size="icon">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span>
+              Page {page} of {totalPages}
+            </span>
+            <Button disabled={page === totalPages} onClick={() => setPage(page + 1)} size="icon">
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
         </CardContent>
       </Card>

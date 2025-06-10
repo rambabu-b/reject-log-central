@@ -47,7 +47,7 @@ const LogEntryManagement = () => {
   };
 
   const canCreateNewEntry = () => {
-    return user?.role === 'production' || user?.role === 'hod' || user?.role === 'admin';
+    return user?.role === 'production' || user?.role === 'hod';
   };
 
   const getFilteredEntries = (filter: string) => {
@@ -250,13 +250,11 @@ const LogEntryManagement = () => {
 
       {/* Main Content */}
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-              📋 Rejection Log Entries
-            </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              {user?.role?.toUpperCase()} View
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            📋 Rejection Log Entries
+            <Badge variant="outline" className="ml-2">
+              {user?.role?.toUpperCase()}
             </Badge>
           </div>
           {canCreateNewEntry() && (

@@ -24,6 +24,7 @@ const staticUsers: User[] = [
   
   // HOD/Plant Head (1 user)
   { id: '14', username: 'hod1', password: 'hod123', role: 'hod', name: 'Robert Plant Head', department: 'Management' },
+  { id: '16', username: 'hod2', password: 'hod123', role: 'hod', name: 'Paul Plant Head', department: 'Management' },
   
   // Admin (1 user)
   { id: '15', username: 'admin', password: 'admin123', role: 'admin', name: 'System Administrator', department: 'IT' },

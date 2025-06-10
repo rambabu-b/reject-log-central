@@ -23,26 +23,32 @@ const CreateLogEntry = ({ onCancel, onCreate }: CreateLogEntryProps) => {
     handleSubmit,
   } = useCreateLogEntryForm(onCreate);
 
+  const batchOptions = Array.from(new Set(products.map(p => p.batchNo)));
+  const lineOptions = Array.from(new Set(products.map(p => p.lineNo)));
+
   return (
-    <div className="p-4 sm:p-0">
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 pb-2">
-          <div className="flex items-center w-full sm:w-auto">
-            <Button variant="ghost" onClick={onCancel} className="mr-2 sm:mr-4 p-2">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <CardTitle className="text-lg sm:text-xl">Create New Log Entry</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-            <BasicFieldsSection
-              date={formData.date}
-              productId={formData.productId}
-              products={products}
-              onDateChange={(date) => updateFormData({ date })}
-              onProductChange={(productId) => updateFormData({ productId })}
-            />
+    <Card>
+      <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+        <Button variant="ghost" onClick={onCancel} className="mr-4">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <CardTitle>Create New Log Entry</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <BasicFieldsSection
+            date={formData.date}
+            productId={formData.productId}
+            batchNo={formData.batchNo}
+            lineNo={formData.lineNo}
+            products={products}
+            batchOptions={batchOptions}
+            lineOptions={lineOptions}
+            onDateChange={(date) => updateFormData({ date })}
+            onProductChange={(productId) => updateFormData({ productId })}
+            onBatchNoChange={(batchNo) => updateFormData({ batchNo })}
+            onLineNoChange={(lineNo) => updateFormData({ lineNo })}
+          />
 
             <UserAssignmentSection
               assignedProductionUser={formData.assignedProductionUser}
