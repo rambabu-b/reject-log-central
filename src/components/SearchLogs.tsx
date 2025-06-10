@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Download, Search, X } from 'lucide-react';
 import { LogEntry, Product } from '@/types';
 import LogEntryList from './LogEntryList';
 import LogEntryDetails from './LogEntryDetails';
+import { useToast } from '@/hooks/use-toast';
 
 const SearchLogs = () => {
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
@@ -22,6 +24,7 @@ const SearchLogs = () => {
     dateTo: '',
     status: '',
   });
+  const { toast } = useToast();
 
   useEffect(() => {
     const storedLogs = localStorage.getItem('logEntries');
@@ -41,34 +44,45 @@ const SearchLogs = () => {
   const handleSearch = () => {
     let filtered = [...logEntries];
 
-    if (filters.productName) {
+    // Improved search with better matching
+    if (filters.productName.trim()) {
+      const searchTerm = filters.productName.toLowerCase().trim();
       filtered = filtered.filter(entry =>
-        entry.productName.toLowerCase().includes(filters.productName.toLowerCase())
+        entry.productName.toLowerCase().includes(searchTerm)
       );
     }
 
-    if (filters.batchNo) {
+    if (filters.batchNo.trim()) {
+      const searchTerm = filters.batchNo.toLowerCase().trim();
       filtered = filtered.filter(entry =>
-        entry.batchNo.toLowerCase().includes(filters.batchNo.toLowerCase())
+        entry.batchNo.toLowerCase().includes(searchTerm)
       );
     }
 
-    if (filters.lineNo) {
+    if (filters.lineNo.trim()) {
+      const searchTerm = filters.lineNo.toLowerCase().trim();
       filtered = filtered.filter(entry =>
-        entry.lineNo.toLowerCase().includes(filters.lineNo.toLowerCase())
+        entry.lineNo.toLowerCase().includes(searchTerm)
       );
     }
 
     if (filters.dateFrom) {
-      filtered = filtered.filter(entry =>
-        new Date(entry.date) >= new Date(filters.dateFrom)
-      );
+      const fromDate = new Date(filters.dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(entry => {
+        const entryDate = new Date(entry.date);
+        entryDate.setHours(0, 0, 0, 0);
+        return entryDate >= fromDate;
+      });
     }
 
     if (filters.dateTo) {
-      filtered = filtered.filter(entry =>
-        new Date(entry.date) <= new Date(filters.dateTo)
-      );
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(entry => {
+        const entryDate = new Date(entry.date);
+        return entryDate <= toDate;
+      });
     }
 
     if (filters.status && filters.status !== 'all') {
@@ -76,34 +90,68 @@ const SearchLogs = () => {
     }
 
     setFilteredEntries(filtered);
+
+    // Show search results message
+    toast({
+      title: "Search Complete",
+      description: `Found ${filtered.length} matching entries`,
+    });
   };
 
   const handleExport = (format: 'csv' | 'pdf') => {
+    // Check if there are results to export
+    if (filteredEntries.length === 0) {
+      toast({
+        title: "No Data to Export",
+        description: "No search results found. Please adjust your search criteria.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (format === 'csv') {
+      const csvHeaders = [
+        'Date', 'Product Name', 'Batch No', 'Line No', 'Status', 
+        'Poly Bag No', 'Gross Weight', 'Gross Weight Observed', 
+        'Production Remarks', 'Stores Remarks', 'QA Remarks',
+        'Created By', 'Production User', 'Destruction Done By', 'Destruction Verified By'
+      ];
+      
       const csvContent = [
-        ['Date', 'Product Name', 'Batch No', 'Line No', 'Status', 'Poly Bag No', 'Gross Weight', 'Gross Weight Observed', 'Production Remarks', 'Stores Remarks', 'QA Remarks'].join(','),
+        csvHeaders.join(','),
         ...filteredEntries.map(entry => [
           entry.date,
-          entry.productName,
+          `"${entry.productName}"`,
           entry.batchNo,
           entry.lineNo,
           entry.status,
           entry.polyBagNo || '',
           entry.grossWeight || '',
           entry.grossWeightObserved || '',
-          entry.productionRemarks || '',
-          entry.storesRemarks || '',
-          entry.qaRemarks || ''
+          `"${entry.productionRemarks || ''}"`,
+          `"${entry.storesRemarks || ''}"`,
+          `"${entry.qaRemarks || ''}"`,
+          entry.createdByRole || '',
+          entry.productionUser || '',
+          entry.destructionDoneBy || '',
+          entry.destructionVerifiedBy || ''
         ].join(','))
       ].join('\n');
 
-      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `rejection_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `rejection_logs_${new Date().toISOString().split('T')[0]}_${filteredEntries.length}_entries.csv`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: `Exported ${filteredEntries.length} entries to CSV file`,
+      });
     }
   };
 
@@ -117,6 +165,11 @@ const SearchLogs = () => {
       status: '',
     });
     setFilteredEntries(logEntries);
+    
+    toast({
+      title: "Filters Cleared",
+      description: `Showing all ${logEntries.length} entries`,
+    });
   };
 
   const handleUpdateEntry = (updatedEntry: LogEntry) => {
@@ -220,6 +273,7 @@ const SearchLogs = () => {
                   <SelectItem value="qa_pending">QA Pending</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="reopened">Reopened</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -235,9 +289,14 @@ const SearchLogs = () => {
               <X className="w-4 h-4 mr-2" />
               Clear Filters
             </Button>
-            <Button variant="outline" onClick={() => handleExport('csv')} className="w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              onClick={() => handleExport('csv')} 
+              className="w-full sm:w-auto"
+              disabled={filteredEntries.length === 0}
+            >
               <Download className="w-4 h-4 mr-2" />
-              Export CSV
+              Export CSV ({filteredEntries.length})
             </Button>
           </div>
         </CardContent>
@@ -250,10 +309,17 @@ const SearchLogs = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
-          <LogEntryList
-            entries={filteredEntries}
-            onSelectEntry={setSelectedEntry}
-          />
+          {filteredEntries.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No entries found matching your search criteria.</p>
+              <p className="text-sm mt-2">Try adjusting your filters or clearing them to see all entries.</p>
+            </div>
+          ) : (
+            <LogEntryList
+              entries={filteredEntries}
+              onSelectEntry={setSelectedEntry}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

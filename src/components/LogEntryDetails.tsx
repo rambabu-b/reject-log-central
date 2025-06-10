@@ -169,7 +169,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
       }
     }
 
-    // QA Team workflow
+    // QA Team workflow - Allow saving remarks without approval/rejection
     if (user?.role === 'qa' || (user?.role === 'hod' && entry.status === 'qa_pending')) {
       updatedEntry = {
         ...updatedEntry,
@@ -179,6 +179,8 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
       };
       
       auditDetails = `QA remarks updated: ${formData.qaRemarks}`;
+      // Don't change status when just saving remarks
+      newStatus = entry.status;
     }
 
     // Save audit log
@@ -196,6 +198,16 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
   };
 
   const handleApprove = () => {
+    // QA approval requires remarks
+    if (!formData.qaRemarks.trim()) {
+      toast({
+        title: "Error",
+        description: "QA remarks are required for approval",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updatedEntry = {
       ...entry,
       status: 'approved' as const,
@@ -223,7 +235,7 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
     if (!formData.qaRemarks.trim()) {
       toast({
         title: "Error",
-        description: "Please provide remarks for rejection",
+        description: "QA remarks are required for rejection",
         variant: "destructive",
       });
       return;
@@ -645,7 +657,11 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                     value={formData.qaRemarks}
                     onChange={(e) => setFormData({ ...formData, qaRemarks: e.target.value })}
                     placeholder="Enter QA review comments and remarks (required for approval/rejection)"
+                    className="mt-2"
                   />
+                  <div className="text-sm text-gray-600 mt-1">
+                    Note: QA remarks are required for both approval and rejection
+                  </div>
                 </div>
               ) : (
                 <>

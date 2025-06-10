@@ -22,10 +22,30 @@ const CreateLogEntry = ({ onCancel, onCreate }: CreateLogEntryProps) => {
     formData,
     updateFormData,
     handleSubmit,
+    selectedProduct,
   } = useCreateLogEntryForm(onCreate);
 
+  // Get unique batch and line options from all products
   const batchOptions = Array.from(new Set(products.map(p => p.batchNo)));
   const lineOptions = Array.from(new Set(products.map(p => p.lineNo)));
+
+  // Handle product selection and auto-fill batch/line from selected product
+  const handleProductChange = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      updateFormData({ 
+        productId,
+        batchNo: product.batchNo,
+        lineNo: product.lineNo
+      });
+    } else {
+      updateFormData({ 
+        productId,
+        batchNo: '',
+        lineNo: ''
+      });
+    }
+  };
 
   return (
     <Card>
@@ -46,7 +66,7 @@ const CreateLogEntry = ({ onCancel, onCreate }: CreateLogEntryProps) => {
             batchOptions={batchOptions}
             lineOptions={lineOptions}
             onDateChange={(date) => updateFormData({ date })}
-            onProductChange={(productId) => updateFormData({ productId })}
+            onProductChange={handleProductChange}
             onBatchNoChange={(batchNo) => updateFormData({ batchNo })}
             onLineNoChange={(lineNo) => updateFormData({ lineNo })}
           />
