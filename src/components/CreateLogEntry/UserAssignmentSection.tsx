@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,8 +23,8 @@ const UserAssignmentSection = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium">Team Assignment</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <h3 className="text-lg font-medium">👥 Team Assignment</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* HOD can assign production user, Production users auto-assigned to themselves */}
         {user?.role === 'hod' && (
           <div className="space-y-2">

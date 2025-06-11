@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,19 +53,34 @@ const LogEntryManagement = () => {
   const getFilteredEntries = (filter: string) => {
     let filtered = logEntries;
 
-    // Role-based filtering
+    // Role-based filtering - Updated logic
     if (user?.role === 'production') {
+      // Production users can see entries they created OR entries assigned to them
       filtered = filtered.filter(entry => 
-        entry.createdBy === user.id || entry.assignedProductionUser === user.id
+        entry.createdBy === user.id || 
+        entry.assignedProductionUser === user.id ||
+        (entry.status === 'production_pending' && entry.assignedProductionUser === user.id)
       );
     } else if (user?.role === 'stores') {
+      // Stores users can see entries assigned to them OR entries in stores_pending status
       filtered = filtered.filter(entry => 
-        entry.assignedStoresUser === user.id || entry.status === 'stores_pending'
+        entry.assignedStoresUser === user.id || 
+        entry.status === 'stores_pending' ||
+        (entry.status === 'qa_pending' && entry.assignedStoresUser === user.id) ||
+        (entry.status === 'approved' && entry.assignedStoresUser === user.id) ||
+        (entry.status === 'rejected' && entry.assignedStoresUser === user.id)
       );
     } else if (user?.role === 'qa') {
+      // QA users can see all entries that have reached QA stage or beyond
       filtered = filtered.filter(entry => 
-        entry.status === 'qa_pending' || entry.status === 'approved' || entry.status === 'rejected'
+        entry.status === 'qa_pending' || 
+        entry.status === 'approved' || 
+        entry.status === 'rejected' ||
+        entry.status === 'reopened'
       );
+    } else if (user?.role === 'hod') {
+      // HOD can see ALL entries (no filtering)
+      // filtered = filtered; // No filtering for HOD
     }
 
     // Status-based filtering
@@ -94,6 +108,12 @@ const LogEntryManagement = () => {
           );
         } else if (user?.role === 'qa') {
           return filtered.filter(entry => entry.status === 'qa_pending');
+        } else if (user?.role === 'hod') {
+          return filtered.filter(entry => 
+            entry.status === 'production_pending' || 
+            entry.status === 'stores_pending' || 
+            entry.status === 'qa_pending'
+          );
         }
         return filtered;
       default:
@@ -124,6 +144,12 @@ const LogEntryManagement = () => {
           ).length;
         } else if (user?.role === 'qa') {
           return filtered.filter(e => e.status === 'qa_pending').length;
+        } else if (user?.role === 'hod') {
+          return filtered.filter(e => 
+            e.status === 'production_pending' || 
+            e.status === 'stores_pending' || 
+            e.status === 'qa_pending'
+          ).length;
         }
         return 0;
       })(),
@@ -170,79 +196,79 @@ const LogEntryManagement = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
+    <div className="space-y-4 sm:space-y-6 p-2 sm:p-4 lg:p-0">
       {/* Enhanced Dashboard Overview - Responsive Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4">
         <Card className="col-span-1">
-          <CardContent className="p-3 sm:p-4">
+          <CardContent className="p-2 sm:p-3 lg:p-4">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Entries</p>
-                <p className="text-xl sm:text-2xl font-bold">{counts.total}</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold">{counts.total}</p>
                 <p className="text-xs text-gray-500">Today: {insights.todayEntries}</p>
               </div>
-              <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
-                <FileText className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
+              <div className="p-1 sm:p-2 bg-blue-100 rounded-full flex-shrink-0">
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="col-span-1">
-          <CardContent className="p-3 sm:p-4">
+          <CardContent className="p-2 sm:p-3 lg:p-4">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Pending Review</p>
-                <p className="text-xl sm:text-2xl font-bold text-orange-600">{counts.pending}</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">{counts.pending}</p>
                 <p className="text-xs text-red-500">Urgent: {insights.urgentTasks}</p>
               </div>
-              <div className="p-2 bg-orange-100 rounded-full flex-shrink-0">
-                <Clock className="w-4 h-4 sm:w-6 sm:h-6 text-orange-600" />
+              <div className="p-1 sm:p-2 bg-orange-100 rounded-full flex-shrink-0">
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-orange-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="col-span-1">
-          <CardContent className="p-3 sm:p-4">
+          <CardContent className="p-2 sm:p-3 lg:p-4">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Approved</p>
-                <p className="text-xl sm:text-2xl font-bold text-green-600">{counts.approved}</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{counts.approved}</p>
                 <p className="text-xs text-green-600">{insights.completionRate}% rate</p>
               </div>
-              <div className="p-2 bg-green-100 rounded-full flex-shrink-0">
-                <CheckCircle className="w-4 h-4 sm:w-6 sm:h-6 text-green-600" />
+              <div className="p-1 sm:p-2 bg-green-100 rounded-full flex-shrink-0">
+                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="col-span-1">
-          <CardContent className="p-3 sm:p-4">
+          <CardContent className="p-2 sm:p-3 lg:p-4">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">My Tasks</p>
-                <p className="text-xl sm:text-2xl font-bold text-purple-600">{counts.myTasks}</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{counts.myTasks}</p>
                 <p className="text-xs text-gray-500 capitalize truncate">{user?.role} queue</p>
               </div>
-              <div className="p-2 bg-purple-100 rounded-full flex-shrink-0">
-                <Users className="w-4 h-4 sm:w-6 sm:h-6 text-purple-600" />
+              <div className="p-1 sm:p-2 bg-purple-100 rounded-full flex-shrink-0">
+                <Users className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="col-span-1">
-          <CardContent className="p-3 sm:p-4">
+          <CardContent className="p-2 sm:p-3 lg:p-4">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Variations</p>
-                <p className="text-xl sm:text-2xl font-bold text-yellow-600">{counts.variations}</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600">{counts.variations}</p>
                 <p className="text-xs text-yellow-600 truncate">Need QA review</p>
               </div>
-              <div className="p-2 bg-yellow-100 rounded-full flex-shrink-0">
-                <AlertTriangle className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-600" />
+              <div className="p-1 sm:p-2 bg-yellow-100 rounded-full flex-shrink-0">
+                <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-yellow-600" />
               </div>
             </div>
           </CardContent>
@@ -251,49 +277,51 @@ const LogEntryManagement = () => {
 
       {/* Main Content */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg lg:text-xl">
             📋 Rejection Log Entries
-            <Badge variant="outline" className="ml-2">
+            <Badge variant="outline" className="ml-2 text-xs">
               {user?.role?.toUpperCase()}
             </Badge>
           </CardTitle>
           {canCreateNewEntry() && (
             <Button onClick={() => setShowCreateForm(true)} size="sm" className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
-              Create New Entry
+              <span className="hidden sm:inline">Create New Entry</span>
+              <span className="sm:hidden">Create</span>
             </Button>
           )}
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             {/* Responsive Tabs - Scrollable on mobile */}
-            <div className="px-4 sm:px-0 overflow-x-auto">
+            <div className="px-2 sm:px-0 overflow-x-auto">
               <TabsList className="grid w-max sm:w-full grid-cols-6 min-w-full">
-                <TabsTrigger value="all" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <TabsTrigger value="all" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
                   All
                   <Badge variant="secondary" className="text-xs">{counts.total}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="my-tasks" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <TabsTrigger value="my-tasks" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
                   <span className="hidden sm:inline">My Tasks</span>
                   <span className="sm:hidden">Tasks</span>
                   <Badge variant="destructive" className="text-xs">{counts.myTasks}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="pending" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                  Pending
+                <TabsTrigger value="pending" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+                  <span className="hidden sm:inline">Pending</span>
+                  <span className="sm:hidden">⏳</span>
                   <Badge variant="destructive" className="text-xs">{counts.pending}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="approved" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <TabsTrigger value="approved" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
                   <span className="hidden sm:inline">Approved</span>
                   <span className="sm:hidden">✓</span>
                   <Badge className="text-xs bg-green-600 hover:bg-green-700">{counts.approved}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="rejected" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <TabsTrigger value="rejected" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
                   <span className="hidden sm:inline">Rejected</span>
                   <span className="sm:hidden">✗</span>
                   <Badge variant="destructive" className="text-xs">{counts.rejected}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="variations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <TabsTrigger value="variations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
                   <span className="hidden sm:inline">Variations</span>
                   <span className="sm:hidden">⚠️</span>
                   <Badge className="text-xs bg-yellow-600 text-white">{counts.variations}</Badge>
@@ -310,7 +338,7 @@ const LogEntryManagement = () => {
               </TabsContent>
 
               <TabsContent value="my-tasks">
-                <div className="mb-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg mx-4 sm:mx-0">
+                <div className="mb-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg mx-2 sm:mx-0">
                   <h4 className="font-medium text-blue-800 mb-2 text-sm sm:text-base">
                     📋 Your {user?.role?.toUpperCase()} Tasks
                   </h4>
@@ -318,7 +346,7 @@ const LogEntryManagement = () => {
                     {user?.role === 'production' && 'Complete production data entry for assigned rejection logs.'}
                     {user?.role === 'stores' && 'Record destruction details and identify any variations.'}
                     {user?.role === 'qa' && 'Review and provide final sign-off for completed rejection logs.'}
-                    {(user?.role === 'hod' || user?.role === 'admin') && 'Oversee all rejection log activities.'}
+                    {user?.role === 'hod' && 'Oversee all rejection log activities and manage team assignments.'}
                   </p>
                 </div>
                 <LogEntryList
@@ -349,7 +377,7 @@ const LogEntryManagement = () => {
               </TabsContent>
 
               <TabsContent value="variations">
-                <div className="mb-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg mx-4 sm:mx-0">
+                <div className="mb-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg mx-2 sm:mx-0">
                   <h4 className="font-medium text-yellow-800 mb-2 text-sm sm:text-base">
                     ⚠️ Entries with Variations
                   </h4>
