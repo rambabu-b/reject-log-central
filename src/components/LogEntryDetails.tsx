@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Save, CheckCircle, XCircle, AlertTriangle, Clock, FileText, User, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, XCircle, AlertTriangle, Clock, FileText, User, RotateCcw, Edit } from 'lucide-react';
 import { LogEntry, AuditLog } from '@/types';
 import { useAuth, getStaticUsers } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -410,15 +410,16 @@ const LogEntryDetails = ({ entry, onBack, onUpdate }: LogEntryDetailsProps) => {
                   Variations Noted
                 </Badge>
               )}
+              {canEdit() && !editMode && (
+                <Button onClick={() => setEditMode(true)} size="sm" className="flex items-center gap-1">
+                  <Edit className="w-4 h-4" />
+                  <span className="hidden sm:inline">Edit</span>
+                </Button>
+              )}
             </div>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-            {canEdit() && !editMode && (
-              <Button onClick={() => setEditMode(true)} size="sm" className="w-full sm:w-auto">
-                Edit
-              </Button>
-            )}
             {canApprove() && (
               <>
                 <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" size="sm">
